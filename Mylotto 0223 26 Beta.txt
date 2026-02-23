@@ -857,6 +857,215 @@ echo '{loadmoduleid 126}';
 .skai-opp-diag__num-hit { color: #15803d; font-weight: 700; }
 .skai-opp-diag__num-miss { color: #94a3b8; }
 
+/* ── Decision Cockpit: Today's Action Plan ── */
+.skai-cockpit {
+  background: linear-gradient(135deg, #0A1A33 0%, #1C3460 100%);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+.skai-cockpit::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(28,102,255,0.22) 0%, transparent 60%);
+  pointer-events: none;
+}
+.skai-cockpit__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 0.35rem;
+}
+.skai-cockpit__heading {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.8rem;
+  line-height: 1.25;
+}
+.skai-action-plan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-start;
+}
+.skai-action-plan__badge-col {
+  flex: 0 0 auto;
+}
+.skai-action-plan__body {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.skai-action-plan__lot {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+.skai-action-plan__method {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.75);
+}
+.skai-action-plan__reason {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.65);
+  font-style: italic;
+  margin-top: 0.1rem;
+}
+.skai-action-plan__cta {
+  flex: 0 0 auto;
+  align-self: center;
+  background: #1C66FF;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  line-height: 1.35;
+}
+.skai-action-plan__cta:hover { background: #1558e0; }
+/* ── Confidence badges ── */
+.skai-conf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+.skai-conf-badge::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.skai-conf-badge--HIGH {
+  background: rgba(32,201,151,0.18);
+  color: #20C997;
+  border: 1px solid rgba(32,201,151,0.4);
+}
+.skai-conf-badge--HIGH::before { background: #20C997; }
+.skai-conf-badge--MEDIUM {
+  background: rgba(245,166,35,0.18);
+  color: #F5A623;
+  border: 1px solid rgba(245,166,35,0.4);
+}
+.skai-conf-badge--MEDIUM::before { background: #F5A623; }
+.skai-conf-badge--LOW {
+  background: rgba(127,141,170,0.18);
+  color: #7F8DAA;
+  border: 1px solid rgba(127,141,170,0.4);
+}
+.skai-conf-badge--LOW::before { background: #7F8DAA; }
+/* Dark variant (on dark cockpit background) */
+.skai-conf-badge--dark-HIGH { background: rgba(32,201,151,0.22); color: #6ee7b7; border-color: rgba(32,201,151,0.4); }
+.skai-conf-badge--dark-HIGH::before { background: #6ee7b7; }
+.skai-conf-badge--dark-MEDIUM { background: rgba(245,166,35,0.22); color: #fcd34d; border-color: rgba(245,166,35,0.4); }
+.skai-conf-badge--dark-MEDIUM::before { background: #fcd34d; }
+.skai-conf-badge--dark-LOW { background: rgba(127,141,170,0.18); color: #94a3b8; border-color: rgba(127,141,170,0.3); }
+.skai-conf-badge--dark-LOW::before { background: #94a3b8; }
+
+/* ── Per-lottery card layers ── */
+/* Layer 1: Decision Summary */
+.skai-opp-layer1 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.skai-opp-layer1__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.skai-opp-layer1__lot-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0A1A33;
+  line-height: 1.2;
+}
+.skai-opp-layer1__setup {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 0.1rem;
+}
+.skai-opp-layer1__setup strong { color: #0A1A33; }
+.skai-opp-nextmove {
+  font-size: 0.8rem;
+  color: #475569;
+  border-left: 3px solid #1C66FF;
+  padding-left: 0.5rem;
+  line-height: 1.4;
+  font-style: italic;
+}
+/* Layer 2: Proof (details/summary) */
+.skai-opp-proof {
+  border-top: 1px solid #f1f5f9;
+  margin-top: 0.25rem;
+}
+.skai-opp-proof > summary {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1C66FF;
+  cursor: pointer;
+  padding: 0.35rem 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  user-select: none;
+}
+.skai-opp-proof > summary::-webkit-details-marker { display: none; }
+.skai-opp-proof > summary::before {
+  content: '+';
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #1C66FF;
+  transition: transform 0.15s;
+}
+.skai-opp-proof[open] > summary::before { content: '-'; }
+.skai-opp-proof__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+}
+/* Layer 3: Admin diagnostics (details/summary) */
+.skai-opp-diag-details {
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 0.25rem;
+}
+.skai-opp-diag-details > summary {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.3rem 0;
+  list-style: none;
+  user-select: none;
+}
+.skai-opp-diag-details > summary::-webkit-details-marker { display: none; }
+
 
 [[/style]]
 
@@ -2249,9 +2458,55 @@ foreach ($bestOpps as $lid => &$oppRef) {
 }
 unset($oppRef, $runs);
 
+// ── Compute "Today's Action Plan" ─────────────────────────────────────────
+// Finds the single best lottery+method across all scored data so the top of
+// the page can give an immediate decision: what to run next.
+$__actionPlan = [
+    'lot_id'       => null,
+    'lot_name'     => '',
+    'method_src'   => '',   // source key of the winning run in the best lottery
+    'best_method_src' => '', // source key with most draws_with_hits globally
+    'run_id'       => 0,
+    'best_hits'    => -1,
+    'extra_hits'   => 0,
+    'scored_draws' => 0,
+    'confidence'   => 'LOW',
+    'total_runs'   => 0,
+];
+$__globalSrcHits = []; // source => total draws_with_hits across all lotteries
 
+foreach ($bestOpps as $__alid => $__aopp) {
+    $__abr    = $__aopp['best_rank'];
+    $__aHits  = (int)($__abr['hits']       ?? 0);
+    $__aXHits = (int)($__abr['extra_hits'] ?? 0);
+    $__isBetter = ($__aHits > $__actionPlan['best_hits'])
+        || ($__aHits === $__actionPlan['best_hits'] && $__aXHits > $__actionPlan['extra_hits']);
+    if ($__isBetter) {
+        $__aScoredDraws = count(array_unique(array_column($__aopp['all_scored_runs'] ?? [], 'draw_date')));
+        $__actionPlan = [
+            'lot_id'          => $__alid,
+            'lot_name'        => (string)($__aopp['lottery_name'] ?? ''),
+            'method_src'      => (string)($__abr['source'] ?? ''),
+            'best_method_src' => '', // filled after loop
+            'run_id'          => (int)($__abr['run_id']  ?? 0),
+            'best_hits'       => $__aHits,
+            'extra_hits'      => $__aXHits,
+            'scored_draws'    => $__aScoredDraws,
+            'confidence'      => $__aScoredDraws >= 3 ? 'HIGH' : ($__aScoredDraws >= 1 ? 'MEDIUM' : 'LOW'),
+            'total_runs'      => (int)($__aopp['total_runs'] ?? 0),
+        ];
+    }
+    // Accumulate method consistency across all lotteries
+    foreach (($__aopp['source_stats'] ?? []) as $__src => $__st) {
+        $__globalSrcHits[$__src] = ($__globalSrcHits[$__src] ?? 0) + (int)($__st['draws_with_hits'] ?? 0);
+    }
+}
+// Best overall method = source with most draws_with_hits globally
+arsort($__globalSrcHits);
+$__actionPlan['best_method_src'] = !empty($__globalSrcHits) ? (string)array_key_first($__globalSrcHits) : $__actionPlan['method_src'];
 
 ?>
+
 
 <!-- ==================================================
      CSS Styles (Sorcerer [[style]] block)   'lottery_id
@@ -3085,199 +3340,341 @@ h3.title { font-size: 1.5rem; }
      Best Opportunities Panel
 ================================================== -->
 <?php if (!empty($bestOpps)): ?>
+
+<?php
+// ── Precompute per-card variables for the cockpit ──────────────────────
+// (These are used both in the Action Plan header and the per-card loops)
+// Nothing computed here changes $bestOpps or scoring logic.
+?>
+
+<!-- ==================================================
+     Decision Cockpit: Today's Action Plan
+================================================== -->
+[[div class="skai-cockpit"]]
+  [[div class="skai-cockpit__eyebrow"]]Predictions Hub[[/div]]
+  [[div class="skai-cockpit__heading"]]Today's Recommended Focus[[/div]]
+  [[div class="skai-action-plan"]]
+    [[div class="skai-action-plan__badge-col"]]
+      [[span class="skai-conf-badge skai-conf-badge--dark-<?php echo htmlspecialchars($__actionPlan['confidence'], ENT_QUOTES); ?>"]]
+        <?php echo htmlspecialchars($__actionPlan['confidence'], ENT_QUOTES); ?>
+      [[/span]]
+    [[/div]]
+    [[div class="skai-action-plan__body"]]
+      [[div class="skai-action-plan__lot"]]
+        <?php echo htmlspecialchars($__actionPlan['lot_name'] ?: 'No scored data yet', ENT_QUOTES); ?>
+      [[/div]]
+      [[div class="skai-action-plan__method"]]
+        Method: <?php
+          $__apMethodStr = $__methodLabels[$__actionPlan['method_src']] ?? $__actionPlan['method_src'];
+          echo $__apMethodStr !== '' ? htmlspecialchars($__apMethodStr, ENT_QUOTES) : '&mdash;';
+        ?>
+      [[/div]]
+      [[div class="skai-action-plan__reason"]]
+        <?php
+        if ($__actionPlan['scored_draws'] === 0):
+            echo 'Awaiting official results.';
+        elseif ($__actionPlan['best_hits'] >= 3):
+            echo 'Strong performance across scored draws.';
+        elseif ($__actionPlan['best_hits'] === 2):
+            echo 'Moderate signal. Continue testing.';
+        else:
+            echo 'Low signal. Consider changing strategy.';
+        endif;
+        ?>
+      [[/div]]
+    [[/div]]
+    <?php if ($__actionPlan['lot_id'] !== null && $__actionPlan['run_id'] > 0): ?>
+    [[button type="button" class="skai-action-plan__cta"
+             data-use-settings="1"
+             data-lottery-id="<?php echo (int)$__actionPlan['lot_id']; ?>"
+             data-run-id="<?php echo (int)$__actionPlan['run_id']; ?>"
+             aria-label="Scroll to and run the top setup for <?php echo htmlspecialchars($__actionPlan['lot_name'], ENT_QUOTES); ?>"]]
+      Run This Setup Next Draw
+    [[/button]]
+    <?php endif; ?>
+  [[/div]]
+[[/div]]
+
+<!-- ==================================================
+     Best Opportunities Per-Lottery Cards
+================================================== -->
 [[div class="skai-best-opps"]]
   [[h2 class="skai-best-opps__heading"]]Best Opportunities[[/h2]]
-  [[p class="skai-best-opps__sub"]]Ranked analysis of all your saved predictions -- shows which settings performed best against official draw results, consistency across draws, and runner-ups so you know exactly what to tweak.[[/p]]
+  [[p class="skai-best-opps__sub"]]Your decision hub. For each lottery, we recommend what to run next based on official results.[[/p]]
   [[div class="skai-best-opps__grid"]]
   <?php foreach ($bestOpps as $lid => $opp):
     $oppLotName   = htmlspecialchars($opp['lottery_name'] ?? '', ENT_QUOTES);
     $oppStateName = (string)($opp['state_name'] ?? '');
     $totalRuns    = (int)$opp['total_runs'];
-    $bannerClass  = $totalRuns < 2 ? 'skai-opp-banner--warn' : '';
-    $bannerMsg    = $totalRuns < 2
-      ? 'Save 1-2 more runs to improve these recommendations.'
-      : 'More saved runs = better recommendations.';
-    // Build logo for the Best Opportunities card header
+
+    // Build logo for the card header
     $oppLogo = ['path' => '', 'exists' => false, 'alt' => ''];
     if ($oppStateName !== '' && $opp['lottery_name'] !== '') {
         $oppLogo = buildLotteryLogoPath($oppStateName, (string)$opp['lottery_name']);
     }
-  ?>
-  [[div class="skai-opp-card" id="best-opp-<?php echo $lid; ?>"]]
-    [[div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;"]]
-      <?php if (!empty($oppLogo['path'])): ?>
-        <?php if ($oppLogo['exists']): ?>
-          [[img class="lotto-logo--sm"
-               src="<?php echo htmlspecialchars($oppLogo['path'], ENT_QUOTES); ?>"
-               alt="<?php echo htmlspecialchars($oppLogo['alt'], ENT_QUOTES); ?>"
-               loading="lazy" width="64" height="32"]]
-        <?php else: ?>
-          [[span class="lotto-logo--sm fallback"
-                 aria-label="<?php echo htmlspecialchars($oppLogo['alt'], ENT_QUOTES); ?>"]]
-            <?php
-              $__parts = preg_split('/\s+/', (string)$opp['lottery_name']);
-              $__ini = '';
-              foreach ($__parts as $__p) {
-                  if ($__p !== '') { $__ini .= mb_strtoupper(mb_substr($__p, 0, 1)); if (mb_strlen($__ini) >= 2) break; }
-              }
-              echo htmlspecialchars($__ini ?: 'LE', ENT_QUOTES);
-            ?>
-          [[/span]]
-        <?php endif; ?>
-      <?php endif; ?>
-      [[span style="font-size:0.95rem; font-weight:700; color:#0A1A33;"]]<?php echo $oppLotName; ?>[[/span]]
-    [[/div]]
 
-    <?php
-    // ── Best Opportunities: full analytical summary ──
+    // Per-card scoring vars
     $oppAllRuns    = $opp['all_scored_runs']    ?? [];
     $oppConsist    = $opp['consistency_insights'] ?? [];
     $oppSourceStat = $opp['source_stats']        ?? [];
     $oppBestRank   = $opp['best_rank'];
     $oppHasDraw    = !empty($oppAllRuns);
     $oppWinner     = $oppHasDraw ? $oppAllRuns[0] : null;
-    // Runner-ups: next 2 distinct runs, preserving their rank position in the sorted list
-    $oppRunnerUps  = [];
+
+    // Runner-ups: next 2 distinct runs
+    $oppRunnerUps = [];
     if ($oppHasDraw && count($oppAllRuns) > 1) {
         $seenRunIds = [$oppWinner['run_id'] => true];
         foreach (array_slice($oppAllRuns, 1, null, true) as $rankIdx => $r) {
             if (count($oppRunnerUps) >= 2) break;
             if (isset($seenRunIds[$r['run_id']])) continue;
             $seenRunIds[$r['run_id']] = true;
-            // Store actual rank position (1-based, position 0 = winner = rank #1)
             $oppRunnerUps[] = array_merge($r, ['rank_pos' => $rankIdx + 1]);
         }
     }
     // Total draws with official results for this lottery
     $oppDrawsScored = count(array_unique(array_column($oppAllRuns, 'draw_date')));
-    ?>
 
-    <?php if ($oppHasDraw && $oppWinner !== null): ?>
-    [[div class="skai-opp-analysis"]]
-      [[div class="skai-opp-analysis__title"]]Best Settings Analysis[[/div]]
+    // ── Card-level confidence + next-move sentence ──
+    if ($oppDrawsScored >= 3)     $cardConf = 'HIGH';
+    elseif ($oppDrawsScored >= 1) $cardConf = 'MEDIUM';
+    else                          $cardConf = 'LOW';
 
-      <!-- Winner card -->
-      [[div class="skai-opp-winner"]]
-        [[div class="skai-opp-winner__label"]]#1 Best Run[[/div]]
-        [[div class="skai-opp-winner__metric"]]
-          <?php if ((int)$oppWinner['hits'] > 0 || !empty($oppWinner['extra_hits'])): ?>
-            <?php echo (int)$oppWinner['hits']; ?> hit<?php echo (int)$oppWinner['hits'] === 1 ? '' : 's'; ?>
-            <?php if (!empty($oppWinner['extra_hits'])): ?> + extra ball<?php endif; ?>
-          <?php else: ?>
-            0 hits (draw scored)
+    $cardBestHits = $oppHasDraw ? (int)($oppWinner['hits'] ?? 0) : 0;
+    if ($oppDrawsScored === 0):
+        $cardNextMove = 'Save 1&ndash;2 runs and wait for results.';
+    elseif ($cardBestHits >= 3):
+        $cardNextMove = 'Repeat these settings next draw.';
+    elseif ($cardBestHits === 2):
+        $cardNextMove = 'Continue testing for confirmation.';
+    else:
+        $cardNextMove = 'Increase coverage or switch method.';
+    endif;
+
+    // Recommended method for Layer 1 display
+    if ($oppHasDraw && $oppWinner !== null):
+        $cardRecSrc   = (string)($oppWinner['source'] ?? '');
+        $cardRecRunId = (int)($oppWinner['run_id'] ?? 0);
+    elseif ((int)$oppBestRank['run_id'] > 0):
+        $cardRecSrc   = (string)($oppBestRank['source'] ?? '');
+        $cardRecRunId = (int)$oppBestRank['run_id'];
+    else:
+        $cardRecSrc   = '';
+        $cardRecRunId = 0;
+    endif;
+    $cardRecLabel = htmlspecialchars($__methodLabels[$cardRecSrc] ?? $cardRecSrc, ENT_QUOTES);
+  ?>
+  [[div class="skai-opp-card" id="best-opp-<?php echo $lid; ?>"]]
+
+    <!-- ═══════════════════════════════════════════
+         LAYER 1: Decision Summary (always visible)
+         ═══════════════════════════════════════════ -->
+    [[div class="skai-opp-layer1"]]
+
+      [[div class="skai-opp-layer1__header"]]
+        [[div style="display:flex; align-items:center; gap:0.45rem;"]]
+          <?php if (!empty($oppLogo['path'])): ?>
+            <?php if ($oppLogo['exists']): ?>
+              [[img class="lotto-logo--sm"
+                   src="<?php echo htmlspecialchars($oppLogo['path'], ENT_QUOTES); ?>"
+                   alt="<?php echo htmlspecialchars($oppLogo['alt'], ENT_QUOTES); ?>"
+                   loading="lazy" width="64" height="32"]]
+            <?php else: ?>
+              [[span class="lotto-logo--sm fallback"
+                     aria-label="<?php echo htmlspecialchars($oppLogo['alt'], ENT_QUOTES); ?>"]]
+                <?php
+                  $__parts = preg_split('/\s+/', (string)$opp['lottery_name']);
+                  $__ini = '';
+                  foreach ($__parts as $__p) {
+                      if ($__p !== '') { $__ini .= mb_strtoupper(mb_substr($__p, 0, 1)); if (mb_strlen($__ini) >= 2) break; }
+                  }
+                  echo htmlspecialchars($__ini ?: 'LE', ENT_QUOTES);
+                ?>
+              [[/span]]
+            <?php endif; ?>
           <?php endif; ?>
+          [[span class="skai-opp-layer1__lot-name"]]<?php echo $oppLotName; ?>[[/span]]
         [[/div]]
-        [[div class="skai-opp-winner__sub"]]
-          <?php echo htmlspecialchars($__methodLabels[$oppWinner['source']] ?? $oppWinner['source'], ENT_QUOTES); ?>
-          &bull; Draw: <?php echo htmlspecialchars($oppWinner['draw_date'], ENT_QUOTES); ?>
-          &bull; Run #<?php echo (int)$oppWinner['run_id']; ?>
-        [[/div]]
-        <?php if (!empty($oppWinner['actual_main'])): ?>
-        <!-- Predicted numbers: hits highlighted green, misses greyed -->
-        [[div class="skai-opp-nums"]]
-          [[span class="skai-opp-nums__label"]]Predicted[[/span]]
-          <?php
-          $__matchSet = array_flip($oppWinner['matched_main'] ?? []);
-          foreach (($oppWinner['pred_main'] ?? []) as $__pn):
-              $__cls = isset($__matchSet[$__pn]) ? 'skai-opp-num--hit' : 'skai-opp-num--miss';
-          ?>
-            [[span class="skai-opp-num <?php echo $__cls; ?>"]]<?php echo (int)$__pn; ?>[[/span]]
-          <?php endforeach; ?>
-          <?php if (!empty($oppWinner['pred_extra'])): ?>
-            [[span class="skai-opp-num skai-opp-num--<?php echo ((int)$oppWinner['extra_hits'] > 0 ? 'extra-hit' : 'miss'); ?>"]]
-              +<?php echo (int)$oppWinner['pred_extra']; ?>
-            [[/span]]
-          <?php endif; ?>
-        [[/div]]
-        <!-- Actual winning numbers -->
-        [[div class="skai-opp-nums"]]
-          [[span class="skai-opp-nums__label"]]Winning draw[[/span]]
-          <?php foreach ($oppWinner['actual_main'] as $__an): ?>
-            [[span class="skai-opp-num skai-opp-num--win"]]<?php echo (int)$__an; ?>[[/span]]
-          <?php endforeach; ?>
-          <?php if (!empty($oppWinner['actual_extra'])): ?>
-            [[span class="skai-opp-num skai-opp-num--win"]]
-              +<?php echo (int)$oppWinner['actual_extra']; ?>
-            [[/span]]
-          <?php endif; ?>
-        [[/div]]
-        <?php endif; ?>
-        <?php if ((int)$oppWinner['hits'] > 0): ?>
-        [[div class="skai-opp-winner__insight"]]
-          Best across <?php echo $oppDrawsScored; ?> scored draw<?php echo $oppDrawsScored === 1 ? '' : 's'; ?>,
-          <?php echo count($oppAllRuns); ?> total run<?php echo count($oppAllRuns) === 1 ? '' : 's'; ?> evaluated.
-        [[/div]]
-        <?php endif; ?>
-        [[div class="skai-opp-card__actions" style="margin-top:0.4rem;"]]
-          [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
-                   data-use-settings="1"
-                   data-lottery-id="<?php echo $lid; ?>"
-                   data-run-id="<?php echo (int)$oppWinner['run_id']; ?>"
-                   aria-label="Scroll to and highlight the best run for <?php echo $oppLotName; ?>"]]
-            Go to best run
-          [[/button]]
-          [[form method="post" style="display:inline;"]]
-            <?php echo \Joomla\CMS\HTML\HTMLHelper::_('form.token'); ?>
-            [[input type="hidden" name="save_best_settings" value="1"]]
-            [[input type="hidden" name="bs_run_id"          value="<?php echo (int)$oppWinner['run_id']; ?>"]]
-            [[input type="hidden" name="bs_lottery_id"      value="<?php echo $lid; ?>"]]
-            [[input type="hidden" name="bs_source"          value="<?php echo htmlspecialchars($oppWinner['source'], ENT_QUOTES); ?>"]]
-            [[input type="hidden" name="bs_name"            value="Best Settings - <?php echo $oppLotName; ?>"]]
-            [[button type="submit" class="skai-opp-card__cta skai-opp-card__cta--secondary"
-                     onclick="return confirm('Save these as Best Settings for <?php echo $oppLotName; ?>?');"]]
-              Save settings
-            [[/button]]
-          [[/form]]
-        [[/div]]
+        [[span class="skai-conf-badge skai-conf-badge--<?php echo $cardConf; ?>"]]<?php echo $cardConf; ?>[[/span]]
       [[/div]]
 
-      <?php if (!empty($oppConsist)): ?>
-      <!-- Consistency insight -->
-      <?php foreach (array_slice($oppConsist, 0, 1) as $ci): ?>
-      [[div class="skai-opp-consistency"]]
-        [[span class="skai-opp-consistency__label"]]Consistent performer:[[/span]]
-        <?php echo htmlspecialchars($__methodLabels[$ci['source']] ?? $ci['source'], ENT_QUOTES); ?>
-        scored hits in <?php echo (int)$ci['draws_with_hits']; ?> of <?php echo (int)$ci['total_runs']; ?> scored draw<?php echo (int)$ci['total_runs'] === 1 ? '' : 's'; ?>
-        (<?php echo (int)$ci['total_hits']; ?> total hit<?php echo (int)$ci['total_hits'] === 1 ? '' : 's'; ?> across those draws).
-        This method shows consistency -- consider keeping these settings and tweaking other parameters.
+      <?php if ($cardRecSrc !== ''): ?>
+      [[div class="skai-opp-layer1__setup"]]
+        Recommended: [[strong]]<?php echo $cardRecLabel; ?>[[/strong]]
+        <?php if ($cardBestHits > 0): ?>
+          &bull; <?php echo $cardBestHits; ?> hit<?php echo $cardBestHits === 1 ? '' : 's'; ?> on last scored draw
+        <?php endif; ?>
       [[/div]]
-      <?php endforeach; ?>
       <?php endif; ?>
 
-      <?php if (!empty($oppRunnerUps)): ?>
-      <!-- Runner-ups -->
-      [[div class="skai-opp-runnerups"]]
-        [[div class="skai-opp-analysis__title" style="margin-bottom:0.2rem;"]]Other top runs[[/div]]
-        <?php foreach ($oppRunnerUps as $ruIdx => $ru): ?>
-        [[div class="skai-opp-runnerups__row"]]
-          [[span class="skai-opp-runnerups__rank"]]#<?php echo (int)$ru['rank_pos'] + 1; ?>[[/span]]
-          [[span]]
-            <?php echo htmlspecialchars($__methodLabels[$ru['source']] ?? $ru['source'], ENT_QUOTES); ?>
-            &mdash; <?php echo (int)$ru['hits']; ?> hit<?php echo (int)$ru['hits'] === 1 ? '' : 's'; ?>
-            <?php if (!empty($ru['matched_main'])): ?>
-              (matched: <?php foreach ($ru['matched_main'] as $__mn): ?>
-                [[span class="skai-opp-num skai-opp-num--hit" style="font-size:0.68rem;padding:1px 4px;"]]<?php echo (int)$__mn; ?>[[/span]]
-              <?php endforeach; ?>)
+      [[div class="skai-opp-nextmove"]]<?php echo $cardNextMove; ?>[[/div]]
+
+      <?php if ($cardRecRunId > 0): ?>
+      [[div class="skai-opp-card__actions"]]
+        [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
+                 data-use-settings="1"
+                 data-lottery-id="<?php echo $lid; ?>"
+                 data-run-id="<?php echo $cardRecRunId; ?>"
+                 aria-label="Use these settings for <?php echo $oppLotName; ?>"]]
+          Use These Settings
+        [[/button]]
+      [[/div]]
+      <?php endif; ?>
+
+    [[/div]]<!-- end Layer 1 -->
+
+    <!-- ═══════════════════════════════════════════
+         LAYER 2: Proof (collapsed by default)
+         ═══════════════════════════════════════════ -->
+    [[details class="skai-opp-proof"]]
+      [[summary]]View Proof[[/summary]]
+      [[div class="skai-opp-proof__content"]]
+
+        <?php if ($oppHasDraw && $oppWinner !== null): ?>
+
+        <!-- Winner card -->
+        [[div class="skai-opp-winner"]]
+          [[div class="skai-opp-winner__label"]]#1 Best Run[[/div]]
+          [[div class="skai-opp-winner__metric"]]
+            <?php if ((int)$oppWinner['hits'] > 0 || !empty($oppWinner['extra_hits'])): ?>
+              <?php echo (int)$oppWinner['hits']; ?> hit<?php echo (int)$oppWinner['hits'] === 1 ? '' : 's'; ?>
+              <?php if (!empty($oppWinner['extra_hits'])): ?> + extra ball<?php endif; ?>
+            <?php else: ?>
+              0 hits (draw scored)
             <?php endif; ?>
-            [[button type="button" class="skai-opp-card__see-runs"
+          [[/div]]
+          [[div class="skai-opp-winner__sub"]]
+            <?php echo htmlspecialchars($__methodLabels[$oppWinner['source']] ?? $oppWinner['source'], ENT_QUOTES); ?>
+            &bull; Draw: <?php echo htmlspecialchars($oppWinner['draw_date'], ENT_QUOTES); ?>
+            &bull; Run #<?php echo (int)$oppWinner['run_id']; ?>
+          [[/div]]
+          <?php if (!empty($oppWinner['actual_main'])): ?>
+          [[div class="skai-opp-nums"]]
+            [[span class="skai-opp-nums__label"]]Predicted[[/span]]
+            <?php
+            $__matchSet = array_flip($oppWinner['matched_main'] ?? []);
+            foreach (($oppWinner['pred_main'] ?? []) as $__pn):
+                $__cls = isset($__matchSet[$__pn]) ? 'skai-opp-num--hit' : 'skai-opp-num--miss';
+            ?>
+              [[span class="skai-opp-num <?php echo $__cls; ?>"]]<?php echo (int)$__pn; ?>[[/span]]
+            <?php endforeach; ?>
+            <?php if (!empty($oppWinner['pred_extra'])): ?>
+              [[span class="skai-opp-num skai-opp-num--<?php echo ((int)$oppWinner['extra_hits'] > 0 ? 'extra-hit' : 'miss'); ?>"]]
+                +<?php echo (int)$oppWinner['pred_extra']; ?>
+              [[/span]]
+            <?php endif; ?>
+          [[/div]]
+          [[div class="skai-opp-nums"]]
+            [[span class="skai-opp-nums__label"]]Winning draw[[/span]]
+            <?php foreach ($oppWinner['actual_main'] as $__an): ?>
+              [[span class="skai-opp-num skai-opp-num--win"]]<?php echo (int)$__an; ?>[[/span]]
+            <?php endforeach; ?>
+            <?php if (!empty($oppWinner['actual_extra'])): ?>
+              [[span class="skai-opp-num skai-opp-num--win"]]
+                +<?php echo (int)$oppWinner['actual_extra']; ?>
+              [[/span]]
+            <?php endif; ?>
+          [[/div]]
+          <?php endif; ?>
+          <?php if ((int)$oppWinner['hits'] > 0): ?>
+          [[div class="skai-opp-winner__insight"]]
+            Best across <?php echo $oppDrawsScored; ?> scored draw<?php echo $oppDrawsScored === 1 ? '' : 's'; ?>,
+            <?php echo count($oppAllRuns); ?> total run<?php echo count($oppAllRuns) === 1 ? '' : 's'; ?> evaluated.
+          [[/div]]
+          <?php endif; ?>
+          [[div class="skai-opp-card__actions" style="margin-top:0.4rem;"]]
+            [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
                      data-use-settings="1"
                      data-lottery-id="<?php echo $lid; ?>"
-                     data-run-id="<?php echo (int)$ru['run_id']; ?>"
-                     style="font-size:0.7rem;"
-                     aria-label="Go to this run"]]view[[/button]]
-          [[/span]]
+                     data-run-id="<?php echo (int)$oppWinner['run_id']; ?>"
+                     aria-label="Scroll to and highlight the best run for <?php echo $oppLotName; ?>"]]
+              Go to best run
+            [[/button]]
+            [[form method="post" style="display:inline;"]]
+              <?php echo \Joomla\CMS\HTML\HTMLHelper::_('form.token'); ?>
+              [[input type="hidden" name="save_best_settings" value="1"]]
+              [[input type="hidden" name="bs_run_id"          value="<?php echo (int)$oppWinner['run_id']; ?>"]]
+              [[input type="hidden" name="bs_lottery_id"      value="<?php echo $lid; ?>"]]
+              [[input type="hidden" name="bs_source"          value="<?php echo htmlspecialchars($oppWinner['source'], ENT_QUOTES); ?>"]]
+              [[input type="hidden" name="bs_name"            value="Best Settings - <?php echo $oppLotName; ?>"]]
+              [[button type="submit" class="skai-opp-card__cta skai-opp-card__cta--secondary"
+                       onclick="return confirm('Save these as Best Settings for <?php echo $oppLotName; ?>?');"]]
+                Save settings
+              [[/button]]
+            [[/form]]
+          [[/div]]
+        [[/div]]<!-- end winner card -->
+
+        <?php if (!empty($oppConsist)): ?>
+        <?php foreach (array_slice($oppConsist, 0, 1) as $ci): ?>
+        [[div class="skai-opp-consistency"]]
+          [[span class="skai-opp-consistency__label"]]Consistent performer:[[/span]]
+          <?php echo htmlspecialchars($__methodLabels[$ci['source']] ?? $ci['source'], ENT_QUOTES); ?>
+          scored hits in <?php echo (int)$ci['draws_with_hits']; ?> of <?php echo (int)$ci['total_runs']; ?> scored draw<?php echo (int)$ci['total_runs'] === 1 ? '' : 's'; ?>
+          (<?php echo (int)$ci['total_hits']; ?> total hit<?php echo (int)$ci['total_hits'] === 1 ? '' : 's'; ?> across those draws).
+          This method shows consistency &mdash; consider keeping these settings and tweaking other parameters.
         [[/div]]
         <?php endforeach; ?>
-      [[/div]]
-      <?php endif; ?>
+        <?php endif; ?>
 
-      <?php
-      // Admin-only diagnostic table: top 10 scored runs with full detail for verification
-      if ($user->authorise('core.admin')):
-          $__diagRuns = array_slice($oppAllRuns, 0, 10);
-      ?>
+        <?php if (!empty($oppRunnerUps)): ?>
+        [[div class="skai-opp-runnerups"]]
+          [[div class="skai-opp-analysis__title" style="margin-bottom:0.2rem;"]]Other top runs[[/div]]
+          <?php foreach ($oppRunnerUps as $ru): ?>
+          [[div class="skai-opp-runnerups__row"]]
+            [[span class="skai-opp-runnerups__rank"]]#<?php echo (int)$ru['rank_pos']; ?>[[/span]]
+            [[span]]
+              <?php echo htmlspecialchars($__methodLabels[$ru['source']] ?? $ru['source'], ENT_QUOTES); ?>
+              &mdash; <?php echo (int)$ru['hits']; ?> hit<?php echo (int)$ru['hits'] === 1 ? '' : 's'; ?>
+              <?php if (!empty($ru['matched_main'])): ?>
+                (matched: <?php foreach ($ru['matched_main'] as $__mn): ?>
+                  [[span class="skai-opp-num skai-opp-num--hit" style="font-size:0.68rem;padding:1px 4px;"]]<?php echo (int)$__mn; ?>[[/span]]
+                <?php endforeach; ?>)
+              <?php endif; ?>
+              [[button type="button" class="skai-opp-card__see-runs"
+                       data-use-settings="1"
+                       data-lottery-id="<?php echo $lid; ?>"
+                       data-run-id="<?php echo (int)$ru['run_id']; ?>"
+                       style="font-size:0.7rem;"
+                       aria-label="Go to this run"]]view[[/button]]
+            [[/span]]
+          [[/div]]
+          <?php endforeach; ?>
+        [[/div]]
+        <?php endif; ?>
+
+        <?php elseif ((int)$oppBestRank['run_id'] > 0): ?>
+        [[div class="skai-opp-nodraws"]]No official draw results yet. Showing best saved run by coverage.[[/div]]
+        [[div class="skai-opp-winner" style="opacity:0.75;"]]
+          [[div class="skai-opp-winner__label"]]Best run (awaiting draw results)[[/div]]
+          [[div class="skai-opp-winner__metric"]]<?php echo (int)$oppBestRank['coverage']; ?> numbers predicted[[/div]]
+          [[div class="skai-opp-winner__sub"]]<?php echo htmlspecialchars($__methodLabels[$oppBestRank['source']] ?? $oppBestRank['source'], ENT_QUOTES); ?> &bull; <?php echo htmlspecialchars($oppBestRank['draw_date'], ENT_QUOTES); ?>[[/div]]
+          [[div class="skai-opp-card__actions" style="margin-top:0.4rem;"]]
+            [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
+                     data-use-settings="1"
+                     data-lottery-id="<?php echo $lid; ?>"
+                     data-run-id="<?php echo (int)$oppBestRank['run_id']; ?>"
+                     aria-label="Scroll to this run"]]
+              Go to run
+            [[/button]]
+          [[/div]]
+        [[/div]]
+
+        <?php else: ?>
+        [[div class="skai-opp-nodraws"]]No saved predictions yet for this lottery.[[/div]]
+        <?php endif; ?>
+
+      [[/div]]<!-- end proof content -->
+    [[/details]]<!-- end Layer 2 -->
+
+    <!-- ═══════════════════════════════════════════
+         LAYER 3: Admin Diagnostics (collapsed, admin only)
+         ═══════════════════════════════════════════ -->
+    <?php if ($user->authorise('core.admin') && !empty($oppAllRuns)): ?>
+    <?php $__diagRuns = array_slice($oppAllRuns, 0, 10); ?>
+    [[details class="skai-opp-diag-details"]]
+      [[summary]]Admin: <?php echo count($oppAllRuns); ?> run<?php echo count($oppAllRuns) === 1 ? '' : 's'; ?> evaluated (top 10 shown)[[/summary]]
       [[div class="skai-opp-diag"]]
-        [[div class="skai-opp-diag__title"]]Admin diagnostics: <?php echo count($oppAllRuns); ?> run<?php echo count($oppAllRuns) === 1 ? '' : 's'; ?> evaluated (showing top 10)[[/div]]
         [[table class="skai-opp-diag__table"]]
           [[thead]][[tr]]
             [[th]]Rank[[/th]][[th]]Run[[/th]][[th]]Draw date[[/th]][[th]]Hits[[/th]]
@@ -3318,43 +3715,13 @@ h3.title { font-size: 1.5rem; }
           [[/tbody]]
         [[/table]]
       [[/div]]
-      <?php endif; // end admin diagnostic ?>
+    [[/details]]<!-- end Layer 3 -->
+    <?php endif; // end admin diagnostic ?>
 
-    [[/div]]<!-- end .skai-opp-analysis -->
-
-    <?php elseif ($oppBestRank['run_id'] > 0): ?>
-    <!-- No official draws yet: show coverage-based best run -->
-    [[div class="skai-opp-analysis"]]
-      [[div class="skai-opp-nodraws"]]No official draw results yet for this lottery. Once draws are recorded, this section will show your best-performing settings automatically.[[/div]]
-      [[div class="skai-opp-winner" style="opacity:0.75;"]]
-        [[div class="skai-opp-winner__label"]]Best run (awaiting draw results)[[/div]]
-        [[div class="skai-opp-winner__metric"]]<?php echo (int)$oppBestRank['coverage']; ?> numbers predicted[[/div]]
-        [[div class="skai-opp-winner__sub"]]<?php echo htmlspecialchars($__methodLabels[$oppBestRank['source']] ?? $oppBestRank['source'], ENT_QUOTES); ?> &bull; <?php echo htmlspecialchars($oppBestRank['draw_date'], ENT_QUOTES); ?>[[/div]]
-        [[div class="skai-opp-card__actions" style="margin-top:0.4rem;"]]
-          [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
-                   data-use-settings="1"
-                   data-lottery-id="<?php echo $lid; ?>"
-                   data-run-id="<?php echo (int)$oppBestRank['run_id']; ?>"
-                   aria-label="Scroll to this run"]]
-            Go to run
-          [[/button]]
-        [[/div]]
-      [[/div]]
-    [[/div]]
-
-    <?php else: ?>
-    [[div class="skai-opp-analysis"]]
-      [[div class="skai-opp-nodraws"]]No saved predictions yet for this lottery.[[/div]]
-    [[/div]]
-    <?php endif; ?>
-
-    [[div class="skai-opp-banner <?php echo $bannerClass; ?>" style="margin-top:0.6rem;"]]
-      <?php echo htmlspecialchars($bannerMsg, ENT_QUOTES); ?>
-    [[/div]]
-  [[/div]]
+  [[/div]]<!-- end .skai-opp-card -->
   <?php endforeach; ?>
-  [[/div]]
-[[/div]]
+  [[/div]]<!-- end .skai-best-opps__grid -->
+[[/div]]<!-- end .skai-best-opps -->
 <?php endif; ?>
 
 <!-- ==================================================
