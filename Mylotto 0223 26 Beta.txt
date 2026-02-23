@@ -2289,7 +2289,7 @@ $drawKey = (int)$g['game_id'] . '|' . $normDate;
 // Try drawMap first; if missing, fall back to DB lookup so rank strength can work
 $drawRow = isset($drawMap[$drawKey]) ? $drawMap[$drawKey] : null;
 if (!$drawRow) {
-    $drawRow = getDrawByDate((int)$g['game_id'], (string)$g['draw_date'], $db);
+    $drawRow = getDrawByDate((int)$g['game_id'], (string)$normDate, $db);
 }
 
 if ($drawRow) {
@@ -2313,12 +2313,26 @@ if ($drawRow) {
         $src       = (string)$s->source;
         $prev      = $bestOpps[$lid]['best_rank'];
 
-        // A draw-based result always overrides a no-draw fallback (has_draw=false).
-        // Among draw-based results: higher rankScore wins; tie-break by run_id.
-        $isBetter = (!(bool)($prev['has_draw'] ?? false))
-            || ($rankScore > $prev['score'])
-            || ($rankScore === $prev['score'] && (int)$s->id > (int)$prev['run_id']);
+// A draw-based result always overrides a no-draw fallback (has_draw=false).
+// Among draw-based results, match the UI rule:
+// 1) main hits desc
+// 2) extra ball hit desc
+// 3) rank strength (rank_score) desc
+// 4) run_id desc (newer wins)
+$prevHasDraw = (bool)($prev['has_draw'] ?? false);
 
+$hits      = (int)($ms['hits'] ?? 0);
+$extraHits = !empty($ms['extra_hit']) ? 1 : 0; // normalize bool->int
+$prevHits  = (int)($prev['hits'] ?? 0);
+$prevExtra = (int)($prev['extra_hits'] ?? 0);
+$prevScore = (int)($prev['score'] ?? 0);
+
+$isBetter = (!$prevHasDraw)
+    || ($hits > $prevHits)
+    || ($hits === $prevHits && $extraHits > $prevExtra)
+    || ($hits === $prevHits && $extraHits === $prevExtra && $rankScore > $prevScore)
+    || ($hits === $prevHits && $extraHits === $prevExtra && $rankScore === $prevScore && (int)$s->id > (int)($prev['run_id'] ?? 0));
+	
         if ($isBetter) {
             $bestOpps[$lid]['best_rank'] = [
                 'score'        => $rankScore,
@@ -2326,7 +2340,7 @@ if ($drawRow) {
                 'run_id'       => (int)$s->id,
                 'source'       => $src,
                 'hits'         => $ms['hits'],
-                'extra_hits'   => $ms['extra_hit'] ? 1 : 0,
+                'extra_hits'   => (!empty($ms['extra_hit']) ? 1 : 0),
                 'numbers'      => $ms['pred_main'],
                 'extra_number' => $ms['pred_extra'],
                 'has_draw'     => true,
@@ -2339,7 +2353,7 @@ if ($drawRow) {
             'run_id'          => (int)$s->id,
             'source'          => $src,
             'hits'            => $ms['hits'],
-            'extra_hits'      => $ms['extra_hit'] ? 1 : 0,
+            'extra_hits'   => (!empty($ms['extra_hit']) ? 1 : 0),
             'rank_score'      => $rankScore,
             'coverage'        => count(array_unique($ms['pred_main'])),
             'draw_date'       => (string)$g['draw_date'],
@@ -2429,14 +2443,31 @@ foreach ($bestOpps as $lid => &$oppRef) {
     $runs = &$oppRef['all_scored_runs'];
     if (empty($runs)) continue;
 
-    // Sort all scored runs: 1) hits desc, 2) rank_score desc, 3) coverage desc, 4) run_id desc
-    usort($runs, static function ($a, $b) {
-        if ($b['hits'] !== $a['hits'])        return $b['hits'] - $a['hits'];
-        if ($b['rank_score'] !== $a['rank_score']) return $b['rank_score'] - $a['rank_score'];
-        if ($b['coverage'] !== $a['coverage']) return $b['coverage'] - $a['coverage'];
-        return $b['run_id'] - $a['run_id'];
-    });
+// Sort all scored runs (Powerball/Mega etc friendly):
+// 1) main hits desc
+// 2) extra_hits desc (so "3 + Powerball" beats "3" every time)
+// 3) rank_score desc (earlier-ranked matches win)
+// 4) coverage desc
+// 5) run_id desc (newer wins)
+usort($runs, static function ($a, $b) {
+    $aHits  = (int)($a['hits'] ?? 0);
+    $bHits  = (int)($b['hits'] ?? 0);
+    if ($bHits !== $aHits) return $bHits - $aHits;
 
+    $aExtra = (int)($a['extra_hits'] ?? 0);
+    $bExtra = (int)($b['extra_hits'] ?? 0);
+    if ($bExtra !== $aExtra) return $bExtra - $aExtra;
+
+    $aRank  = (int)($a['rank_score'] ?? 0);
+    $bRank  = (int)($b['rank_score'] ?? 0);
+    if ($bRank !== $aRank) return $bRank - $aRank;
+
+    $aCov   = (int)($a['coverage'] ?? 0);
+    $bCov   = (int)($b['coverage'] ?? 0);
+    if ($bCov !== $aCov) return $bCov - $aCov;
+
+    return (int)($b['run_id'] ?? 0) - (int)($a['run_id'] ?? 0);
+});
     // Consistency: find sources that have hits in multiple draws
     $oppRef['consistency_insights'] = [];
     foreach ($oppRef['source_stats'] as $src => $st) {
