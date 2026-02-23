@@ -2939,9 +2939,30 @@ h3.title { font-size: 1.5rem; }
                    data-run-id="0"
                    aria-label="See all saved runs for this lottery"]]See other runs[[/button]]
         [[/div]]
-      <?php else: // [SKAI-FIX-01] score<0 = no official draw row found for this date ?>
-        [[div class="skai-opp-card__metric"]]Waiting for official results[[/div]]
-        [[div class="skai-opp-card__label"]]Official draw results for this date have not been recorded yet.[[/div]]
+      <?php else: // score<0: no draw data yet; show coverage fallback if saved runs exist ?>
+        <?php if ($totalRuns > 0 && isset($opp['best_coverage']) && is_array($opp['best_coverage']) && (int)$opp['best_coverage']['score'] > 0): ?>
+          <?php $__bc_fb = $opp['best_coverage']; ?>
+          [[div class="skai-opp-card__metric"]]<?php echo (int)$__bc_fb['score']; ?> unique number<?php echo (int)$__bc_fb['score'] === 1 ? '' : 's'; ?> predicted[[/div]]
+          [[div class="skai-opp-card__label"]]<?php echo htmlspecialchars($__methodLabels[$__bc_fb['source'] ?? ''] ?? ($__bc_fb['source'] ?? ''), ENT_QUOTES); ?> &bull; <?php echo htmlspecialchars($__bc_fb['draw_date'] ?? '', ENT_QUOTES); ?>[[/div]]
+          [[div class="skai-opp-card__why"]]Draw results for this date are not yet available. Showing the run with the most predicted numbers.[[/div]]
+          [[div class="skai-opp-card__actions"]]
+            [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
+                     data-use-settings="1"
+                     data-lottery-id="<?php echo $lid; ?>"
+                     data-run-id="<?php echo (int)($__bc_fb['run_id'] ?? 0); ?>"
+                     aria-label="Scroll to this lottery section"]]
+              Use these settings
+            [[/button]]
+            [[button type="button" class="skai-opp-card__see-runs"
+                     data-use-settings="1"
+                     data-lottery-id="<?php echo $lid; ?>"
+                     data-run-id="0"
+                     aria-label="See all saved runs for this lottery"]]See other runs[[/button]]
+          [[/div]]
+        <?php else: ?>
+          [[div class="skai-opp-card__metric"]]Waiting for official results[[/div]]
+          [[div class="skai-opp-card__label"]]Official draw results for this date have not been recorded yet.[[/div]]
+        <?php endif; ?>
       <?php endif; ?>
     [[/div]]
 
@@ -8121,74 +8142,8 @@ if (narrativeEl) {
         } // end update()
       }); // end forEach(lottery-group)
   
-// - Settings panels: default COLLAPSED; persist per run -
-// Use delegation so clicks work reliably on mobile and future DOM changes.
-document.addEventListener('click', function(ev){
-  var t = ev && ev.target ? ev.target : null;
-  if (!t) return;
+// [SKAI-NOTE] Settings-panel handler moved outside the [SKAI-GUARD] try block (see below).
 
-  // Use closest if available (modern browsers); otherwise walk up.
-  var toggle = (t.closest ? t.closest('.settings-toggle') : null);
-  if (!toggle) {
-    var n = t;
-    while (n && n !== document) {
-      if (n.classList && n.classList.contains('settings-toggle')) { toggle = n; break; }
-      n = n.parentNode;
-    }
-  }
-  if (!toggle) return;
-
-  var card  = toggle.closest ? toggle.closest('.prediction-card') : null;
-  if (!card) return;
-
-  var panel = card.querySelector('.settings-panel');
-  if (!panel) return;
-
-  var id      = card.getAttribute('data-set-id') || '';
-  var openKey = 'settingsOpen_' + id;
-
-  // Current open/closed from DOM (default collapsed)
-  var isOpen = panel.classList.contains('open');
-
-  // Toggle
-  isOpen = !isOpen;
-
-  // classList.toggle with force param is not universal; do explicit add/remove
-  if (isOpen) panel.classList.add('open');
-  else panel.classList.remove('open');
-
-  panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-  toggle.textContent = isOpen ? 'Hide settings' : 'Show settings';
-  toggle.setAttribute('title', isOpen ? 'Hide settings' : 'Show settings');
-  toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-
-  try { localStorage.setItem(openKey, String(isOpen)); } catch(e){}
-});
-
-// Initialize panels from storage after DOM is ready
-// (deduped: we are already inside the top-level DOMContentLoaded handler)
-Array.prototype.forEach.call(document.querySelectorAll('.prediction-card'), function(card){
-  var id     = card.getAttribute('data-set-id') || '';
-  var panel  = card.querySelector('.settings-panel');
-  var toggle = card.querySelector('.settings-toggle');
-  if (!panel || !toggle) return;
-
-  var openKey = 'settingsOpen_' + id;
-
-  // Default: panels start CLOSED on every load
-  var isOpen = false;
-
-  if (isOpen) panel.classList.add('open');
-  else panel.classList.remove('open');
-
-  panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-  toggle.textContent = isOpen ? 'Hide settings' : 'Show settings';
-
-  toggle.setAttribute('title', isOpen ? 'Hide settings' : 'Show settings');
-  toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-});
-
- 
 // - Compare All button functionality (robust change firing) -
 var compareAllBtn = document.getElementById('compare-all-btn');
 
@@ -8263,6 +8218,68 @@ function convertTimestampsToLocal() {
 convertTimestampsToLocal();
 
 } catch(e) { /* [SKAI-GUARD] Main script error caught - collapse and snapshot run in separate script */ if (window.console && console.error) { console.error('[SKAI] Main script error:', e); } }
+
+// - Settings panels: default COLLAPSED; persist per run -
+// Outside the [SKAI-GUARD] try block so a main-script error cannot prevent registration.
+// Uses event delegation on document so it works after any DOM re-render.
+document.addEventListener('click', function(ev){
+  var t = ev && ev.target ? ev.target : null;
+  if (!t) return;
+
+  // Use closest if available (modern browsers); otherwise walk up.
+  var toggle = (t.closest ? t.closest('.settings-toggle') : null);
+  if (!toggle) {
+    var n = t;
+    while (n && n !== document) {
+      if (n.classList && n.classList.contains('settings-toggle')) { toggle = n; break; }
+      n = n.parentNode;
+    }
+  }
+  if (!toggle) return;
+
+  var card = toggle.closest ? toggle.closest('.prediction-card') : null;
+  if (!card) {
+    var n2 = toggle.parentNode;
+    while (n2 && n2 !== document) {
+      if (n2.classList && n2.classList.contains('prediction-card')) { card = n2; break; }
+      n2 = n2.parentNode;
+    }
+  }
+  if (!card) return;
+
+  var panel = card.querySelector('.settings-panel');
+  if (!panel) return;
+
+  var id      = card.getAttribute('data-set-id') || '';
+  var openKey = 'settingsOpen_' + id;
+
+  var isOpen = panel.classList.contains('open');
+  isOpen = !isOpen;
+
+  if (isOpen) panel.classList.add('open');
+  else panel.classList.remove('open');
+
+  panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+  toggle.textContent = isOpen ? 'Hide settings' : 'Show settings';
+  toggle.setAttribute('title', isOpen ? 'Hide settings' : 'Show settings');
+  toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+  try { localStorage.setItem(openKey, String(isOpen)); } catch(e){}
+});
+
+// Initialize all .settings-panel states on load (outside guard so it always runs).
+Array.prototype.forEach.call(document.querySelectorAll('.prediction-card'), function(card){
+  var panel  = card.querySelector('.settings-panel');
+  var toggle = card.querySelector('.settings-toggle');
+  if (!panel || !toggle) return;
+
+  // Default: panels start CLOSED on every page load
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  toggle.textContent = 'Show settings';
+  toggle.setAttribute('title', 'Show settings');
+  toggle.setAttribute('aria-expanded', 'false');
+});
 
 // close the top-level DOMContentLoaded wrapper opened at the start of this script
 });
