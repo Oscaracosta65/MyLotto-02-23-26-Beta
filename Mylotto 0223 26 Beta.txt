@@ -775,6 +775,87 @@ echo '{loadmoduleid 126}';
   font-style: italic;
   padding: 0.3rem 0;
 }
+/* ── Best Opps: number chip rows ── */
+.skai-opp-nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 0.2rem;
+}
+.skai-opp-nums__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  width: 100%;
+  margin-bottom: 1px;
+}
+.skai-opp-num {
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  line-height: 1.3;
+}
+.skai-opp-num--hit {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #15803d;
+}
+.skai-opp-num--miss {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+.skai-opp-num--win {
+  background: #fef9c3;
+  border: 1px solid #fde047;
+  color: #713f12;
+}
+.skai-opp-num--extra-hit {
+  background: #f3e8ff;
+  border: 1px solid #d8b4fe;
+  color: #6b21a8;
+}
+/* ── Admin diagnostic table ── */
+.skai-opp-diag {
+  margin-top: 0.75rem;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 0.5rem;
+}
+.skai-opp-diag__title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+.skai-opp-diag__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  color: #475569;
+}
+.skai-opp-diag__table th {
+  font-weight: 700;
+  color: #0A1A33;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 2px 5px;
+  text-align: left;
+  white-space: nowrap;
+}
+.skai-opp-diag__table td {
+  padding: 2px 5px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+.skai-opp-diag__table tr:last-child td { border-bottom: none; }
+.skai-opp-diag__hits-best { color: #15803d; font-weight: 800; }
+.skai-opp-diag__hits-good { color: #2563eb; font-weight: 700; }
+.skai-opp-diag__num-hit { color: #15803d; font-weight: 700; }
+.skai-opp-diag__num-miss { color: #94a3b8; }
 
 
 [[/style]]
@@ -1314,6 +1395,115 @@ function getDrawFields($gameId)
         'extra' => $extraCol
     ];
 }
+
+/**
+ * computeRunMatchStats: Single source of truth for comparing a saved prediction
+ * run against the actual draw results for that lottery draw.
+ *
+ * Works with both $drawMap rows (normalized main_0/main_1/extra_ball aliases from
+ * the UNION ALL pre-load) and getDrawByDate() rows (original column names from
+ * lottery_skip_config.json). The caller does not need to know which format it has.
+ *
+ * @param  array       $drawRow   Draw row (from $drawMap OR getDrawByDate())
+ * @param  array       $mainCols  Original main ball column names from getDrawFields()
+ * @param  string|null $extraCol  Original extra ball column name, or null
+ * @param  object      $pred      Saved prediction row from #__user_saved_numbers
+ * @return array {
+ *   actual_main  : int[]   winning main-ball numbers from the draw
+ *   actual_extra : int     winning extra-ball number (0 = none / not applicable)
+ *   pred_main    : int[]   predicted main numbers (parsed + filtered)
+ *   pred_extra   : int     predicted extra number (0 = none)
+ *   hits         : int     count of main-ball matches
+ *   extra_hit    : bool    whether the extra ball matched
+ *   matched_main : int[]   the subset of pred_main that are in actual_main
+ *   pos_sum      : int     sum of 1-based positions of matched numbers (rank strength)
+ *   rank_score   : int     composite score: hits*10000 - pos_sum + extra_hit*10
+ * }
+ */
+function computeRunMatchStats(array $drawRow, array $mainCols, $extraCol, $pred): array
+{
+    // ── 1. Extract actual draw numbers ──────────────────────────────────────
+    $actualMain  = [];
+    $actualExtra = 0;
+
+    if (array_key_exists('main_0', $drawRow)) {
+        // Row from $drawMap: normalized aliases main_0, main_1, …, extra_ball
+        for ($i = 0; $i < 25; $i++) {
+            $k = 'main_' . $i;
+            if (isset($drawRow[$k]) && $drawRow[$k] !== '' && $drawRow[$k] !== null) {
+                $v = (int)$drawRow[$k];
+                if ($v > 0) $actualMain[] = $v;
+            }
+        }
+        if ($extraCol !== null &&
+            isset($drawRow['extra_ball']) &&
+            $drawRow['extra_ball'] !== '' &&
+            $drawRow['extra_ball'] !== null) {
+            $actualExtra = (int)$drawRow['extra_ball'];
+        }
+    } else {
+        // Row from getDrawByDate(): original column names from config
+        foreach ($mainCols as $col) {
+            if (isset($drawRow[$col]) && $drawRow[$col] !== '' && $drawRow[$col] !== null) {
+                $v = (int)$drawRow[$col];
+                if ($v > 0) $actualMain[] = $v;
+            }
+        }
+        if ($extraCol &&
+            isset($drawRow[$extraCol]) &&
+            $drawRow[$extraCol] !== '' &&
+            $drawRow[$extraCol] !== null) {
+            $actualExtra = (int)$drawRow[$extraCol];
+        }
+    }
+
+    // ── 2. Extract predicted numbers ────────────────────────────────────────
+    $predMain = array_values(array_filter(
+        array_map('intval', explode(',', (string)($pred->main_numbers ?? ''))),
+        static function ($n) { return $n !== 0; }
+    ));
+
+    // extra_ball_numbers is the actual DB field; check legacy names as fallback
+    $predExtra = 0;
+    if (isset($pred->extra_ball_numbers) && $pred->extra_ball_numbers !== '' && $pred->extra_ball_numbers !== null) {
+        $tmp = array_values(array_filter(array_map('intval', explode(',', (string)$pred->extra_ball_numbers))));
+        if (!empty($tmp)) $predExtra = (int)$tmp[0];
+    } elseif (isset($pred->extra_number) && $pred->extra_number !== '' && $pred->extra_number !== null) {
+        $predExtra = (int)$pred->extra_number;
+    } elseif (isset($pred->extra_numbers) && $pred->extra_numbers !== '' && $pred->extra_numbers !== null) {
+        $tmp = array_values(array_filter(array_map('intval', explode(',', (string)$pred->extra_numbers))));
+        if (!empty($tmp)) $predExtra = (int)$tmp[0];
+    } elseif (isset($pred->bonus_number) && $pred->bonus_number !== '' && $pred->bonus_number !== null) {
+        $predExtra = (int)$pred->bonus_number;
+    }
+
+    // ── 3. Compute hits ─────────────────────────────────────────────────────
+    $hits        = 0;
+    $posSum      = 0;
+    $matchedMain = [];
+    foreach ($predMain as $pos0 => $n) {
+        if (in_array($n, $actualMain, true)) {
+            $hits++;
+            $posSum += ($pos0 + 1);
+            $matchedMain[] = $n;
+        }
+    }
+    $extraHit  = ($actualExtra > 0 && $predExtra > 0 && $predExtra === $actualExtra);
+    $rankScore = ($hits * 10000) - $posSum + ($extraHit ? 10 : 0);
+
+    return [
+        'actual_main'  => $actualMain,
+        'actual_extra' => $actualExtra,
+        'pred_main'    => $predMain,
+        'pred_extra'   => $predExtra,
+        'hits'         => $hits,
+        'extra_hit'    => $extraHit,
+        'matched_main' => $matchedMain,
+        'pos_sum'      => $posSum,
+        'rank_score'   => $rankScore,
+    ];
+}
+
 
 /**
  * Map a US state/territory name → USPS abbreviation (uppercase).
@@ -1898,158 +2088,87 @@ if ($drawRow) {
     $mainCols = !empty($fields['main']) ? $fields['main'] : [];
     $extraCol = $fields['extra'] ?? null;
 
-    // Build actual MAIN and EXTRA draw numbers using the same robust strategy
-    // as the detail section (lines ~3428-3460):
-    // - if the row came from $drawMap it has normalized aliases (main_0, main_1, extra_ball)
-    // - if the row came from getDrawByDate() (SELECT *) it has original column names
-    $actualMain  = [];
-    $actualExtra = 0;
+    // Score each prediction run using the single-source-of-truth helper.
+    // The helper handles both $drawMap rows (normalized aliases) and
+    // getDrawByDate() rows (original column names) transparently.
+    foreach ($g['preds'] as $s) {
+        $ms = computeRunMatchStats($drawRow, $mainCols, $extraCol, $s);
 
-    if (array_key_exists('main_0', $drawRow)) {
-        // Row from $drawMap: iterate normalized aliases main_0, main_1, ...
-        // Use 25 as a safe upper bound (far exceeds any real lottery ball count).
-        for ($__i = 0; $__i < 25; $__i++) {
-            $mainKey = 'main_' . $__i;
-            if (isset($drawRow[$mainKey]) && $drawRow[$mainKey] !== '' && $drawRow[$mainKey] !== null) {
-                $v = (int)$drawRow[$mainKey];
-                if ($v > 0) $actualMain[] = $v;
-            }
+        // Skip entirely if we couldn't extract any actual draw numbers
+        // (e.g., future draw, config missing — no point accumulating).
+        if (empty($ms['actual_main'])) {
+            continue;
         }
-        // Normalized extra ball
-        if ($extraCol !== null &&
-            isset($drawRow['extra_ball']) &&
-            $drawRow['extra_ball'] !== '' &&
-            $drawRow['extra_ball'] !== null) {
-            $actualExtra = (int)$drawRow['extra_ball'];
-        }
-    } else {
-        // Row from getDrawByDate(): use original column names from config
-        foreach ($mainCols as $col) {
-            if (isset($drawRow[$col]) && $drawRow[$col] !== '' && $drawRow[$col] !== null) {
-                $v = (int)$drawRow[$col];
-                if ($v > 0) $actualMain[] = $v;
-            }
-        }
-        if ($extraCol &&
-            isset($drawRow[$extraCol]) &&
-            $drawRow[$extraCol] !== '' &&
-            $drawRow[$extraCol] !== null) {
-            $actualExtra = (int)$drawRow[$extraCol];
-        }
-    }
 
-    if (!empty($actualMain)) {
-        foreach ($g['preds'] as $s) {
+        $rankScore = $ms['rank_score'];
+        $src       = (string)$s->source;
+        $prev      = $bestOpps[$lid]['best_rank'];
 
-            // Predicted MAIN list (ordered)
-            $predMain = array_values(
-                array_filter(
-                    array_map('intval', explode(',', (string)($s->main_numbers ?? ''))),
-                    static function ($n) { return $n !== 0; }
-                )
-            );
+        // A draw-based result always overrides a no-draw fallback (has_draw=false).
+        // Among draw-based results: higher rankScore wins; tie-break by run_id.
+        $isBetter = (!(bool)($prev['has_draw'] ?? false))
+            || ($rankScore > $prev['score'])
+            || ($rankScore === $prev['score'] && (int)$s->id > (int)$prev['run_id']);
 
-            // Predicted EXTRA (single value) if present for this run
-            // The DB field is extra_ball_numbers (CSV); also check legacy field names.
-            $predExtra = 0;
-            if (isset($s->extra_ball_numbers) && $s->extra_ball_numbers !== '' && $s->extra_ball_numbers !== null) {
-                $tmp = array_values(array_filter(array_map('intval', explode(',', (string)$s->extra_ball_numbers))));
-                if (!empty($tmp)) $predExtra = (int)$tmp[0];
-            } elseif (isset($s->extra_number) && $s->extra_number !== '' && $s->extra_number !== null) {
-                $predExtra = (int)$s->extra_number;
-            } elseif (isset($s->extra_numbers) && $s->extra_numbers !== '' && $s->extra_numbers !== null) {
-                $tmp = array_values(array_filter(array_map('intval', explode(',', (string)$s->extra_numbers))));
-                if (!empty($tmp)) $predExtra = (int)$tmp[0];
-            } elseif (isset($s->bonus_number) && $s->bonus_number !== '' && $s->bonus_number !== null) {
-                $predExtra = (int)$s->bonus_number;
-            }
-
-            // MAIN rank strength: primary = main hit count; tie-break = earlier hit positions
-            $mainHitCount = 0;
-            $posSum       = 0;
-
-            foreach ($predMain as $pos0 => $n) {
-                if (in_array($n, $actualMain, true)) {
-                    $mainHitCount++;
-                    $posSum += ($pos0 + 1);
-                }
-            }
-
-            // EXTRA hit: tracked separately (does not inflate main hits)
-            $extraHitCount = 0;
-            if ($actualExtra > 0 && $predExtra > 0 && $predExtra === $actualExtra) {
-                $extraHitCount = 1;
-            }
-
-            // Score rule:
-            // - MAIN hits dominate (rank strength is about "hits in the list")
-            // - earlier positions win ties
-            // - EXTRA hit is a small tie-break bonus only (never overrides main hit count)
-            $rankScore = ($mainHitCount * 10000) - $posSum + ($extraHitCount * 10);
-
-            $prev = $bestOpps[$lid]['best_rank'];
-
-            // A draw-based result always overrides a no-draw fallback (has_draw=false).
-            // Among draw-based results: higher rankScore wins; tie-break by run_id.
-            $isBetter = (!(bool)($prev['has_draw'] ?? false))  // any draw-based beats a no-draw fallback
-                || ($rankScore > $prev['score'])
-                || ($rankScore === $prev['score'] && (int)$s->id > (int)$prev['run_id']);
-
-            if ($isBetter) {
-                $bestOpps[$lid]['best_rank'] = [
-                    'score'        => $rankScore,
-                    'draw_date'    => (string)$g['draw_date'],
-                    'run_id'       => (int)$s->id,
-                    'source'       => (string)$s->source,
-                    'hits'         => $mainHitCount,          // MAIN hits
-                    'extra_hits'   => $extraHitCount,         // extra ball hit flag
-                    'numbers'      => $predMain,              // main list only
-                    'extra_number' => $predExtra,             // predicted extra for display/debug
-                    'has_draw'     => true,                   // official draw data used
-                    'coverage'     => count(array_unique($predMain)),
-                ];
-            }
-
-            // Accumulate this run into the full ranked list and per-source stats
-            $src = (string)$s->source;
-            $bestOpps[$lid]['all_scored_runs'][] = [
-                'run_id'     => (int)$s->id,
-                'source'     => $src,
-                'hits'       => $mainHitCount,
-                'extra_hits' => $extraHitCount,
-                'rank_score' => $rankScore,
-                'coverage'   => count(array_unique($predMain)),
-                'draw_date'  => (string)$g['draw_date'],
-                // Key settings fingerprint for consistency detection
-                'epochs'              => isset($s->epochs) ? (string)$s->epochs : '',
-                'batch_size'          => isset($s->batch_size) ? (string)$s->batch_size : '',
-                'dropout_rate'        => isset($s->dropout_rate) ? (string)$s->dropout_rate : '',
-                'learning_rate'       => isset($s->learning_rate) ? (string)$s->learning_rate : '',
-                'draws_analyzed'      => isset($s->draws_analyzed) ? (string)$s->draws_analyzed : '',
-                'skip_window'         => isset($s->skip_window) ? (string)$s->skip_window : '',
-                'skai_blend_skip_pct' => isset($s->skai_blend_skip_pct) ? (string)$s->skai_blend_skip_pct : '',
-                'skai_blend_ai_pct'   => isset($s->skai_blend_ai_pct) ? (string)$s->skai_blend_ai_pct : '',
-                'skai_run_mode'       => isset($s->skai_run_mode) ? (string)$s->skai_run_mode : '',
+        if ($isBetter) {
+            $bestOpps[$lid]['best_rank'] = [
+                'score'        => $rankScore,
+                'draw_date'    => (string)$g['draw_date'],
+                'run_id'       => (int)$s->id,
+                'source'       => $src,
+                'hits'         => $ms['hits'],
+                'extra_hits'   => $ms['extra_hit'] ? 1 : 0,
+                'numbers'      => $ms['pred_main'],
+                'extra_number' => $ms['pred_extra'],
+                'has_draw'     => true,
+                'coverage'     => count(array_unique($ms['pred_main'])),
             ];
-            // Per-source stats
-            if (!isset($bestOpps[$lid]['source_stats'][$src])) {
-                $bestOpps[$lid]['source_stats'][$src] = [
-                    'draws_with_hits'   => 0,
-                    'total_hits'        => 0,
-                    'total_runs_scored' => 0,
-                    'best_hits'         => 0,
-                    'best_run_id'       => 0,
-                ];
-            }
-            $bestOpps[$lid]['source_stats'][$src]['total_runs_scored']++;
-            $bestOpps[$lid]['source_stats'][$src]['total_hits'] += $mainHitCount;
-            if ($mainHitCount > 0) {
-                $bestOpps[$lid]['source_stats'][$src]['draws_with_hits']++;
-            }
-            if ($mainHitCount > $bestOpps[$lid]['source_stats'][$src]['best_hits']) {
-                $bestOpps[$lid]['source_stats'][$src]['best_hits']  = $mainHitCount;
-                $bestOpps[$lid]['source_stats'][$src]['best_run_id'] = (int)$s->id;
-            }
+        }
+
+        // Accumulate into the full ranked list (used by the analysis summary)
+        $bestOpps[$lid]['all_scored_runs'][] = [
+            'run_id'          => (int)$s->id,
+            'source'          => $src,
+            'hits'            => $ms['hits'],
+            'extra_hits'      => $ms['extra_hit'] ? 1 : 0,
+            'rank_score'      => $rankScore,
+            'coverage'        => count(array_unique($ms['pred_main'])),
+            'draw_date'       => (string)$g['draw_date'],
+            'actual_main'     => $ms['actual_main'],
+            'actual_extra'    => $ms['actual_extra'],
+            'pred_main'       => $ms['pred_main'],
+            'pred_extra'      => $ms['pred_extra'],
+            'matched_main'    => $ms['matched_main'],
+            // Key settings fingerprint for consistency detection
+            'epochs'              => isset($s->epochs) ? (string)$s->epochs : '',
+            'batch_size'          => isset($s->batch_size) ? (string)$s->batch_size : '',
+            'dropout_rate'        => isset($s->dropout_rate) ? (string)$s->dropout_rate : '',
+            'learning_rate'       => isset($s->learning_rate) ? (string)$s->learning_rate : '',
+            'draws_analyzed'      => isset($s->draws_analyzed) ? (string)$s->draws_analyzed : '',
+            'skip_window'         => isset($s->skip_window) ? (string)$s->skip_window : '',
+            'skai_blend_skip_pct' => isset($s->skai_blend_skip_pct) ? (string)$s->skai_blend_skip_pct : '',
+            'skai_blend_ai_pct'   => isset($s->skai_blend_ai_pct) ? (string)$s->skai_blend_ai_pct : '',
+            'skai_run_mode'       => isset($s->skai_run_mode) ? (string)$s->skai_run_mode : '',
+        ];
+
+        // Per-source stats
+        if (!isset($bestOpps[$lid]['source_stats'][$src])) {
+            $bestOpps[$lid]['source_stats'][$src] = [
+                'draws_with_hits'   => 0,
+                'total_hits'        => 0,
+                'total_runs_scored' => 0,
+                'best_hits'         => 0,
+                'best_run_id'       => 0,
+            ];
+        }
+        $bestOpps[$lid]['source_stats'][$src]['total_runs_scored']++;
+        $bestOpps[$lid]['source_stats'][$src]['total_hits'] += $ms['hits'];
+        if ($ms['hits'] > 0) {
+            $bestOpps[$lid]['source_stats'][$src]['draws_with_hits']++;
+        }
+        if ($ms['hits'] > $bestOpps[$lid]['source_stats'][$src]['best_hits']) {
+            $bestOpps[$lid]['source_stats'][$src]['best_hits']   = $ms['hits'];
+            $bestOpps[$lid]['source_stats'][$src]['best_run_id'] = (int)$s->id;
         }
     }
 }
@@ -3050,15 +3169,43 @@ h3.title { font-size: 1.5rem; }
         [[/div]]
         [[div class="skai-opp-winner__sub"]]
           <?php echo htmlspecialchars($__methodLabels[$oppWinner['source']] ?? $oppWinner['source'], ENT_QUOTES); ?>
-          &bull; <?php echo htmlspecialchars($oppWinner['draw_date'], ENT_QUOTES); ?>
-          &bull; <?php echo (int)$oppWinner['coverage']; ?> number<?php echo (int)$oppWinner['coverage'] === 1 ? '' : 's'; ?> predicted
+          &bull; Draw: <?php echo htmlspecialchars($oppWinner['draw_date'], ENT_QUOTES); ?>
+          &bull; Run #<?php echo (int)$oppWinner['run_id']; ?>
         [[/div]]
+        <?php if (!empty($oppWinner['actual_main'])): ?>
+        <!-- Predicted numbers: hits highlighted green, misses greyed -->
+        [[div class="skai-opp-nums"]]
+          [[span class="skai-opp-nums__label"]]Predicted[[/span]]
+          <?php
+          $__matchSet = array_flip($oppWinner['matched_main'] ?? []);
+          foreach (($oppWinner['pred_main'] ?? []) as $__pn):
+              $__cls = isset($__matchSet[$__pn]) ? 'skai-opp-num--hit' : 'skai-opp-num--miss';
+          ?>
+            [[span class="skai-opp-num <?php echo $__cls; ?>"]]<?php echo (int)$__pn; ?>[[/span]]
+          <?php endforeach; ?>
+          <?php if (!empty($oppWinner['pred_extra'])): ?>
+            [[span class="skai-opp-num skai-opp-num--<?php echo ((int)$oppWinner['extra_hits'] > 0 ? 'extra-hit' : 'miss'); ?>"]]
+              +<?php echo (int)$oppWinner['pred_extra']; ?>
+            [[/span]]
+          <?php endif; ?>
+        [[/div]]
+        <!-- Actual winning numbers -->
+        [[div class="skai-opp-nums"]]
+          [[span class="skai-opp-nums__label"]]Winning draw[[/span]]
+          <?php foreach ($oppWinner['actual_main'] as $__an): ?>
+            [[span class="skai-opp-num skai-opp-num--win"]]<?php echo (int)$__an; ?>[[/span]]
+          <?php endforeach; ?>
+          <?php if (!empty($oppWinner['actual_extra'])): ?>
+            [[span class="skai-opp-num skai-opp-num--win"]]
+              +<?php echo (int)$oppWinner['actual_extra']; ?>
+            [[/span]]
+          <?php endif; ?>
+        [[/div]]
+        <?php endif; ?>
         <?php if ((int)$oppWinner['hits'] > 0): ?>
         [[div class="skai-opp-winner__insight"]]
-          This was your best-performing run across <?php echo $oppDrawsScored; ?> scored draw<?php echo $oppDrawsScored === 1 ? '' : 's'; ?> for this lottery.
-          <?php if (count($oppAllRuns) > 1): ?>
-            Reviewed <?php echo count($oppAllRuns); ?> total scored run<?php echo count($oppAllRuns) === 1 ? '' : 's'; ?>.
-          <?php endif; ?>
+          Best across <?php echo $oppDrawsScored; ?> scored draw<?php echo $oppDrawsScored === 1 ? '' : 's'; ?>,
+          <?php echo count($oppAllRuns); ?> total run<?php echo count($oppAllRuns) === 1 ? '' : 's'; ?> evaluated.
         [[/div]]
         <?php endif; ?>
         [[div class="skai-opp-card__actions" style="margin-top:0.4rem;"]]
@@ -3106,8 +3253,12 @@ h3.title { font-size: 1.5rem; }
           [[span class="skai-opp-runnerups__rank"]]#<?php echo (int)$ru['rank_pos'] + 1; ?>[[/span]]
           [[span]]
             <?php echo htmlspecialchars($__methodLabels[$ru['source']] ?? $ru['source'], ENT_QUOTES); ?>
-            &mdash; <?php echo (int)$ru['hits']; ?> hit<?php echo (int)$ru['hits'] === 1 ? '' : 's'; ?>,
-            <?php echo (int)$ru['coverage']; ?> numbers
+            &mdash; <?php echo (int)$ru['hits']; ?> hit<?php echo (int)$ru['hits'] === 1 ? '' : 's'; ?>
+            <?php if (!empty($ru['matched_main'])): ?>
+              (matched: <?php foreach ($ru['matched_main'] as $__mn): ?>
+                [[span class="skai-opp-num skai-opp-num--hit" style="font-size:0.68rem;padding:1px 4px;"]]<?php echo (int)$__mn; ?>[[/span]]
+              <?php endforeach; ?>)
+            <?php endif; ?>
             [[button type="button" class="skai-opp-card__see-runs"
                      data-use-settings="1"
                      data-lottery-id="<?php echo $lid; ?>"
@@ -3119,6 +3270,55 @@ h3.title { font-size: 1.5rem; }
         <?php endforeach; ?>
       [[/div]]
       <?php endif; ?>
+
+      <?php
+      // Admin-only diagnostic table: top 10 scored runs with full detail for verification
+      if ($user->authorise('core.admin')):
+          $__diagRuns = array_slice($oppAllRuns, 0, 10);
+      ?>
+      [[div class="skai-opp-diag"]]
+        [[div class="skai-opp-diag__title"]]Admin diagnostics: <?php echo count($oppAllRuns); ?> run<?php echo count($oppAllRuns) === 1 ? '' : 's'; ?> evaluated (showing top 10)[[/div]]
+        [[table class="skai-opp-diag__table"]]
+          [[thead]][[tr]]
+            [[th]]Rank[[/th]][[th]]Run[[/th]][[th]]Draw date[[/th]][[th]]Hits[[/th]]
+            [[th]]Method[[/th]][[th]]Predicted (green = matched)[[/th]][[th]]Winning numbers[[/th]]
+          [[/tr]][[/thead]]
+          [[tbody]]
+            <?php foreach ($__diagRuns as $__di => $__dr): ?>
+            [[tr]]
+              [[td]]<?php echo $__di + 1; ?>[[/td]]
+              [[td]]<?php echo (int)$__dr['run_id']; ?>[[/td]]
+              [[td]]<?php echo htmlspecialchars($__dr['draw_date'], ENT_QUOTES); ?>[[/td]]
+              [[td class="<?php echo ((int)$__dr['hits'] >= 3) ? 'skai-opp-diag__hits-best' : (((int)$__dr['hits'] > 0) ? 'skai-opp-diag__hits-good' : ''); ?>"]]<?php
+                echo (int)$__dr['hits'];
+                if (!empty($__dr['extra_hits'])) echo '+E';
+              ?>[[/td]]
+              [[td]]<?php echo htmlspecialchars($__methodLabels[$__dr['source']] ?? $__dr['source'], ENT_QUOTES); ?>[[/td]]
+              [[td]]<?php
+                $__dMatchSet = array_flip($__dr['matched_main'] ?? []);
+                foreach (($__dr['pred_main'] ?? []) as $__pn) {
+                    $__cls2 = isset($__dMatchSet[$__pn]) ? 'skai-opp-diag__num-hit' : 'skai-opp-diag__num-miss';
+                    echo '[[span class="' . $__cls2 . '"]]' . (int)$__pn . ' [[/span]]';
+                }
+                if (!empty($__dr['pred_extra'])) {
+                    $__xCls = !empty($__dr['extra_hits']) ? 'skai-opp-diag__num-hit' : 'skai-opp-diag__num-miss';
+                    echo '[[span class="' . $__xCls . '"]]+' . (int)$__dr['pred_extra'] . '[[/span]]';
+                }
+              ?>[[/td]]
+              [[td]]<?php
+                foreach (($__dr['actual_main'] ?? []) as $__an) {
+                    echo '[[span class="skai-opp-diag__num-hit"]]' . (int)$__an . ' [[/span]]';
+                }
+                if (!empty($__dr['actual_extra'])) {
+                    echo '[[span class="skai-opp-diag__num-hit"]]+' . (int)$__dr['actual_extra'] . '[[/span]]';
+                }
+              ?>[[/td]]
+            [[/tr]]
+            <?php endforeach; ?>
+          [[/tbody]]
+        [[/table]]
+      [[/div]]
+      <?php endif; // end admin diagnostic ?>
 
     [[/div]]<!-- end .skai-opp-analysis -->
 
