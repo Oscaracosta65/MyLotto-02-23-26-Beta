@@ -1712,6 +1712,8 @@ foreach ($groups as $groupKey => $g) {
     'extra_hits'   => 0,      // EXTRA hit flag
     'numbers'      => [],     // MAIN predicted list
     'extra_number' => 0,      // predicted EXTRA number (if any)
+    'has_draw'     => false,  // true = official draw data was used for scoring
+    'coverage'     => 0,      // unique predicted numbers (used in no-draw fallback)
 ],
         ];
     }
@@ -1870,7 +1872,10 @@ if ($drawRow) {
 
             $prev = $bestOpps[$lid]['best_rank'];
 
-            $isBetter = ($rankScore > $prev['score'])
+            // A draw-based result always overrides a no-draw fallback (has_draw=false).
+            // Among draw-based results: higher rankScore wins; tie-break by run_id.
+            $isBetter = (!(bool)($prev['has_draw'] ?? false))  // any draw-based beats a no-draw fallback
+                || ($rankScore > $prev['score'])
                 || ($rankScore === $prev['score'] && (int)$s->id > (int)$prev['run_id']);
 
             if ($isBetter) {
@@ -1883,8 +1888,42 @@ if ($drawRow) {
                     'extra_hits'   => $extraHitCount,         // extra ball hit flag
                     'numbers'      => $predMain,              // main list only
                     'extra_number' => $predExtra,             // predicted extra for display/debug
+                    'has_draw'     => true,                   // official draw data used
+                    'coverage'     => count(array_unique($predMain)),
                 ];
             }
+        }
+    }
+}
+// No-draw fallback (still inside the outer foreach ($groups as $groupKey => $g) loop):
+// When no official draw row was found for this group AND best_rank has not yet been
+// set by a draw-based scorer (run_id still 0), pick the run with the most unique
+// predicted numbers (coverage) as a rank-strength proxy.
+// Priority: 1) most unique numbers, 2) most recent run_id (higher = newer)
+if ($bestOpps[$lid]['best_rank']['run_id'] === 0 && !empty($g['preds'])) {
+    foreach ($g['preds'] as $s) {
+        $predMain  = array_values(array_filter(
+            array_map('intval', explode(',', (string)($s->main_numbers ?? ''))),
+            static function ($n) { return $n !== 0; }
+        ));
+        $coverage  = count(array_unique($predMain));
+        $prev      = $bestOpps[$lid]['best_rank'];
+        $prevCov   = (int)($prev['coverage'] ?? 0);
+        $isBetter  = ($coverage > $prevCov)
+            || ($coverage === $prevCov && (int)$s->id > (int)$prev['run_id']);
+        if ($isBetter) {
+            $bestOpps[$lid]['best_rank'] = [
+                'score'        => 0,
+                'draw_date'    => (string)$g['draw_date'],
+                'run_id'       => (int)$s->id,
+                'source'       => (string)$s->source,
+                'hits'         => 0,
+                'extra_hits'   => 0,
+                'numbers'      => $predMain,
+                'extra_number' => 0,
+                'has_draw'     => false,
+                'coverage'     => $coverage,
+            ];
         }
     }
 }
@@ -2136,6 +2175,11 @@ h3.title { font-size: 1.5rem; }
   box-shadow: 0 0 0 5px rgba(28,102,255,0.18), 0 2px 12px rgba(28,102,255,0.12);
   position: relative;
   z-index: 1;
+}
+/* Best Opportunity winner highlight (added alongside skai-best-rank-highlight) */
+.prediction-card.is-best-opportunity {
+  border-left: 4px solid #1C66FF;
+  background: linear-gradient(to right, rgba(28,102,255,0.04) 0%, transparent 60%);
 }
 .skai-best-rank-ribbon {
   display: inline-block;
@@ -2900,7 +2944,7 @@ h3.title { font-size: 1.5rem; }
       [[span class="skai-opp-card__badge skai-opp-card__badge--rank"]]Best Rank Strength[[/span]]
       [[div class="skai-opp-card__def"]]How early the hits showed up in your list (closer to #1 = stronger).[[/div]]
       [[div class="skai-opp-card__run-label"]]Best single run (picked from <?php echo $totalRuns; ?> saved run<?php echo $totalRuns === 1 ? '' : 's'; ?>)[[/div]]
-      <?php if ($br['score'] >= 0): // [SKAI-FIX-01] score>=0 means draw exists (even 0 hits); score<0 = no draw found ?>
+      <?php if ($br['run_id'] > 0 && !empty($br['has_draw'])): // official draw data exists ?>
 	  [[div class="skai-opp-card__metric"]]
 		<?php if ((int)$br['hits'] === 0 && empty($br['extra_hits'])): ?>
 		0 hits (no matches found)
@@ -2912,7 +2956,7 @@ h3.title { font-size: 1.5rem; }
 		<?php endif; ?>
 	  [[/div]]
         [[div class="skai-opp-card__label"]]<?php echo htmlspecialchars($__methodLabels[$br['source']] ?? $br['source'], ENT_QUOTES); ?> &bull; <?php echo htmlspecialchars($br['draw_date'], ENT_QUOTES); ?>[[/div]]
-        [[div class="skai-opp-card__why"]]<?php if ((int)$br['hits'] === 0 && empty($br['extra_hits'])): ?>Draw results exist but none of the predicted numbers matched.<?php else: ?>Why: This one run matched actual draw numbers closer to the top of the list.<?php endif; ?>[[/div]]
+        [[div class="skai-opp-card__why"]]<?php if ((int)$br['hits'] > 0 || !empty($br['extra_hits'])): ?>Best hits: this run had the most matching draw numbers appearing earliest in the prediction list.<?php else: ?>Draw results exist but none of the predicted numbers matched.<?php endif; ?>[[/div]]
         [[div class="skai-opp-card__actions"]]
           [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
                    data-use-settings="1"
@@ -2939,30 +2983,27 @@ h3.title { font-size: 1.5rem; }
                    data-run-id="0"
                    aria-label="See all saved runs for this lottery"]]See other runs[[/button]]
         [[/div]]
-      <?php else: // score<0: no draw data yet; show coverage fallback if saved runs exist ?>
-        <?php if ($totalRuns > 0 && isset($opp['best_coverage']) && is_array($opp['best_coverage']) && (int)$opp['best_coverage']['score'] > 0): ?>
-          <?php $__bc_fb = $opp['best_coverage']; ?>
-          [[div class="skai-opp-card__metric"]]<?php echo (int)$__bc_fb['score']; ?> unique number<?php echo (int)$__bc_fb['score'] === 1 ? '' : 's'; ?> predicted[[/div]]
-          [[div class="skai-opp-card__label"]]<?php echo htmlspecialchars($__methodLabels[$__bc_fb['source'] ?? ''] ?? ($__bc_fb['source'] ?? ''), ENT_QUOTES); ?> &bull; <?php echo htmlspecialchars($__bc_fb['draw_date'] ?? '', ENT_QUOTES); ?>[[/div]]
-          [[div class="skai-opp-card__why"]]Draw results for this date are not yet available. Showing the run with the most predicted numbers.[[/div]]
-          [[div class="skai-opp-card__actions"]]
-            [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
-                     data-use-settings="1"
-                     data-lottery-id="<?php echo $lid; ?>"
-                     data-run-id="<?php echo (int)($__bc_fb['run_id'] ?? 0); ?>"
-                     aria-label="Scroll to this lottery section"]]
-              Use these settings
-            [[/button]]
-            [[button type="button" class="skai-opp-card__see-runs"
-                     data-use-settings="1"
-                     data-lottery-id="<?php echo $lid; ?>"
-                     data-run-id="0"
-                     aria-label="See all saved runs for this lottery"]]See other runs[[/button]]
-          [[/div]]
-        <?php else: ?>
-          [[div class="skai-opp-card__metric"]]Waiting for official results[[/div]]
-          [[div class="skai-opp-card__label"]]Official draw results for this date have not been recorded yet.[[/div]]
-        <?php endif; ?>
+      <?php elseif ($br['run_id'] > 0): // no official draw yet; show coverage-winner with correct reason ?>
+        [[div class="skai-opp-card__metric"]]Best rank strength (no official results yet)[[/div]]
+        [[div class="skai-opp-card__label"]]<?php echo htmlspecialchars($__methodLabels[$br['source']] ?? $br['source'], ENT_QUOTES); ?> &bull; <?php echo htmlspecialchars($br['draw_date'], ENT_QUOTES); ?>[[/div]]
+        [[div class="skai-opp-card__why"]]Awaiting draw results. This run predicted the most numbers, giving the best chance of early-rank hits.[[/div]]
+        [[div class="skai-opp-card__actions"]]
+          [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
+                   data-use-settings="1"
+                   data-lottery-id="<?php echo $lid; ?>"
+                   data-run-id="<?php echo (int)$br['run_id']; ?>"
+                   aria-label="Scroll to this lottery section"]]
+            Use these settings
+          [[/button]]
+          [[button type="button" class="skai-opp-card__see-runs"
+                   data-use-settings="1"
+                   data-lottery-id="<?php echo $lid; ?>"
+                   data-run-id="0"
+                   aria-label="See all saved runs for this lottery"]]See other runs[[/button]]
+        [[/div]]
+      <?php else: // no runs at all ?>
+        [[div class="skai-opp-card__metric"]]Waiting for official results[[/div]]
+        [[div class="skai-opp-card__label"]]Official draw results for this date have not been recorded yet.[[/div]]
       <?php endif; ?>
     [[/div]]
 
@@ -5273,7 +5314,7 @@ $methodKeys = ['skip_hit','ai_prediction','mcmc_prediction','skai_prediction','h
               $__bestRankRunId = isset($bestOpps[$__cardLid]) ? (int)$bestOpps[$__cardLid]['best_rank']['run_id'] : 0;
               $__isBestRank    = ($__bestRankRunId > 0 && (int)$s->id === $__bestRankRunId);
             ?>
-            [[div class="prediction-card <?php echo str_replace('_','-',$s->source); ?><?php if ($__isBestRank): ?> skai-best-rank-highlight<?php endif; ?>"
+            [[div class="prediction-card <?php echo str_replace('_','-',$s->source); ?><?php if ($__isBestRank): ?> skai-best-rank-highlight is-best-opportunity<?php endif; ?>"
      data-set-id="<?php echo (int)$s->id; ?>"
      data-source="<?php echo htmlspecialchars($s->source, ENT_QUOTES); ?>"
      data-pure="<?php echo ($s->source==='skip_hit' && (int)($s->pure_mode ?? 0)===1) ? '1' : '0'; ?>"]]
@@ -8260,8 +8301,8 @@ document.addEventListener('click', function(ev){
   else panel.classList.remove('open');
 
   panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-  toggle.textContent = isOpen ? 'Hide settings' : 'Show settings';
-  toggle.setAttribute('title', isOpen ? 'Hide settings' : 'Show settings');
+  toggle.textContent = isOpen ? 'Hide details' : 'Details';
+  toggle.setAttribute('title', isOpen ? 'Hide details' : 'Show details');
   toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 
   try { localStorage.setItem(openKey, String(isOpen)); } catch(e){}
@@ -8276,8 +8317,8 @@ Array.prototype.forEach.call(document.querySelectorAll('.prediction-card'), func
   // Default: panels start CLOSED on every page load
   panel.classList.remove('open');
   panel.setAttribute('aria-hidden', 'true');
-  toggle.textContent = 'Show settings';
-  toggle.setAttribute('title', 'Show settings');
+  toggle.textContent = 'Details';
+  toggle.setAttribute('title', 'Show details');
   toggle.setAttribute('aria-expanded', 'false');
 });
 
