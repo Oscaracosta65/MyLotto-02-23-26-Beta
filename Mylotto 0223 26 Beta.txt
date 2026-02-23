@@ -1895,35 +1895,47 @@ if (!$drawRow) {
 
 if ($drawRow) {
     $fields   = getDrawFields((int)$g['game_id']);
-    $mainCols = $fields['main']  ?? ['main_0','main_1','main_2','main_3','main_4'];
+    $mainCols = !empty($fields['main']) ? $fields['main'] : [];
     $extraCol = $fields['extra'] ?? null;
 
-    // Build actual MAIN draw numbers only.
-    // $drawMap rows use normalized aliases (main_0, main_1, …) from the UNION ALL query.
-    // getDrawByDate() rows use the original column names from the config.
-    // We try normalized names first (index-based), then fall back to original names.
-    $actualMain = [];
-    $mainColsSeq = array_values($mainCols); // ensure 0-based numeric keys
-    foreach ($mainColsSeq as $idx => $origCol) {
-        $normCol = 'main_' . $idx;
-        // Prefer the normalized alias; fall back to the original config column name.
-        if (isset($drawRow[$normCol]) && $drawRow[$normCol] !== '' && $drawRow[$normCol] !== null) {
-            $v = (int)$drawRow[$normCol];
-            if ($v) $actualMain[] = $v;
-        } elseif (isset($drawRow[$origCol]) && $drawRow[$origCol] !== '' && $drawRow[$origCol] !== null) {
-            $v = (int)$drawRow[$origCol];
-            if ($v) $actualMain[] = $v;
-        }
-    }
-
-    // Build actual EXTRA draw number.
-    // Same dual-name strategy: try the normalized 'extra_ball' alias first.
+    // Build actual MAIN and EXTRA draw numbers using the same robust strategy
+    // as the detail section (lines ~3428-3460):
+    // - if the row came from $drawMap it has normalized aliases (main_0, main_1, extra_ball)
+    // - if the row came from getDrawByDate() (SELECT *) it has original column names
+    $actualMain  = [];
     $actualExtra = 0;
-    $normExtraCol = 'extra_ball';
-    if (isset($drawRow[$normExtraCol]) && $drawRow[$normExtraCol] !== '' && $drawRow[$normExtraCol] !== null) {
-        $actualExtra = (int)$drawRow[$normExtraCol];
-    } elseif ($extraCol && isset($drawRow[$extraCol]) && $drawRow[$extraCol] !== '' && $drawRow[$extraCol] !== null) {
-        $actualExtra = (int)$drawRow[$extraCol];
+
+    if (array_key_exists('main_0', $drawRow)) {
+        // Row from $drawMap: iterate normalized aliases main_0, main_1, ...
+        // Use 25 as a safe upper bound (far exceeds any real lottery ball count).
+        for ($__i = 0; $__i < 25; $__i++) {
+            $mainKey = 'main_' . $__i;
+            if (isset($drawRow[$mainKey]) && $drawRow[$mainKey] !== '' && $drawRow[$mainKey] !== null) {
+                $v = (int)$drawRow[$mainKey];
+                if ($v > 0) $actualMain[] = $v;
+            }
+        }
+        // Normalized extra ball
+        if ($extraCol !== null &&
+            isset($drawRow['extra_ball']) &&
+            $drawRow['extra_ball'] !== '' &&
+            $drawRow['extra_ball'] !== null) {
+            $actualExtra = (int)$drawRow['extra_ball'];
+        }
+    } else {
+        // Row from getDrawByDate(): use original column names from config
+        foreach ($mainCols as $col) {
+            if (isset($drawRow[$col]) && $drawRow[$col] !== '' && $drawRow[$col] !== null) {
+                $v = (int)$drawRow[$col];
+                if ($v > 0) $actualMain[] = $v;
+            }
+        }
+        if ($extraCol &&
+            isset($drawRow[$extraCol]) &&
+            $drawRow[$extraCol] !== '' &&
+            $drawRow[$extraCol] !== null) {
+            $actualExtra = (int)$drawRow[$extraCol];
+        }
     }
 
     if (!empty($actualMain)) {
@@ -1938,12 +1950,14 @@ if ($drawRow) {
             );
 
             // Predicted EXTRA (single value) if present for this run
-            // NOTE: your saved runs may store this in different fields. We check common possibilities safely.
+            // The DB field is extra_ball_numbers (CSV); also check legacy field names.
             $predExtra = 0;
-            if (isset($s->extra_number) && $s->extra_number !== '' && $s->extra_number !== null) {
+            if (isset($s->extra_ball_numbers) && $s->extra_ball_numbers !== '' && $s->extra_ball_numbers !== null) {
+                $tmp = array_values(array_filter(array_map('intval', explode(',', (string)$s->extra_ball_numbers))));
+                if (!empty($tmp)) $predExtra = (int)$tmp[0];
+            } elseif (isset($s->extra_number) && $s->extra_number !== '' && $s->extra_number !== null) {
                 $predExtra = (int)$s->extra_number;
             } elseif (isset($s->extra_numbers) && $s->extra_numbers !== '' && $s->extra_numbers !== null) {
-                // If stored as CSV, take first
                 $tmp = array_values(array_filter(array_map('intval', explode(',', (string)$s->extra_numbers))));
                 if (!empty($tmp)) $predExtra = (int)$tmp[0];
             } elseif (isset($s->bonus_number) && $s->bonus_number !== '' && $s->bonus_number !== null) {
