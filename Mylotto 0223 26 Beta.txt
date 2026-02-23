@@ -1808,18 +1808,31 @@ if ($drawRow) {
     $mainCols = $fields['main']  ?? ['main_0','main_1','main_2','main_3','main_4'];
     $extraCol = $fields['extra'] ?? null;
 
-    // Build actual MAIN draw numbers only
+    // Build actual MAIN draw numbers only.
+    // $drawMap rows use normalized aliases (main_0, main_1, …) from the UNION ALL query.
+    // getDrawByDate() rows use the original column names from the config.
+    // We try normalized names first (index-based), then fall back to original names.
     $actualMain = [];
-    foreach ($mainCols as $col) {
-        if (isset($drawRow[$col]) && $drawRow[$col] !== '' && $drawRow[$col] !== null) {
-            $v = (int)$drawRow[$col];
+    $mainColsSeq = array_values($mainCols); // ensure 0-based numeric keys
+    foreach ($mainColsSeq as $idx => $origCol) {
+        $normCol = 'main_' . $idx;
+        // Prefer the normalized alias; fall back to the original config column name.
+        if (isset($drawRow[$normCol]) && $drawRow[$normCol] !== '' && $drawRow[$normCol] !== null) {
+            $v = (int)$drawRow[$normCol];
+            if ($v) $actualMain[] = $v;
+        } elseif (isset($drawRow[$origCol]) && $drawRow[$origCol] !== '' && $drawRow[$origCol] !== null) {
+            $v = (int)$drawRow[$origCol];
             if ($v) $actualMain[] = $v;
         }
     }
 
-    // Build actual EXTRA draw number (0/1 value; stored separately)
+    // Build actual EXTRA draw number.
+    // Same dual-name strategy: try the normalized 'extra_ball' alias first.
     $actualExtra = 0;
-    if ($extraCol && isset($drawRow[$extraCol]) && $drawRow[$extraCol] !== '' && $drawRow[$extraCol] !== null) {
+    $normExtraCol = 'extra_ball';
+    if (isset($drawRow[$normExtraCol]) && $drawRow[$normExtraCol] !== '' && $drawRow[$normExtraCol] !== null) {
+        $actualExtra = (int)$drawRow[$normExtraCol];
+    } elseif ($extraCol && isset($drawRow[$extraCol]) && $drawRow[$extraCol] !== '' && $drawRow[$extraCol] !== null) {
         $actualExtra = (int)$drawRow[$extraCol];
     }
 
