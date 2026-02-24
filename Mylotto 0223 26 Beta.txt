@@ -1702,8 +1702,7 @@ $__rankCompare = static function (array $a, array $b): int {
     return $b['run_id'] - $a['run_id'];
 };
 
-$bestOpps   = [];
-$__diagRuns = [];
+$bestOpps = [];
 foreach ($groups as $groupKey => $g) {
     $lid = (int)$g['lottery_id'];
 
@@ -1726,6 +1725,7 @@ foreach ($groups as $groupKey => $g) {
     'extra_number' => 0,      // predicted EXTRA number (if any)
     'coverage'     => 0,      // count of predicted main numbers
 ],
+            'all_scored_runs' => [],  // all draw-scored runs; sorted + winner promoted in post-processing
         ];
     }
     $bestOpps[$lid]['total_runs'] += count($g['preds']);
@@ -1902,18 +1902,24 @@ if ($drawRow) {
             $rankScore   = ($mainHitCount * 10000) - $posSum + ($extraHitCount * 10);
             $curCoverage = count($predMain);
 
-            // Collect per-run data for admin diagnostic (Task D)
-            if (!isset($__diagRuns[$lid])) {
-                $__diagRuns[$lid] = [];
-            }
-            $__diagRuns[$lid][] = [
-                'run_id'     => (int)$s->id,
-                'draw_date'  => (string)$g['draw_date'],
-                'hits'       => $mainHitCount,
-                'extra_hits' => $extraHitCount,
-                'rank_score' => $rankScore,
-                'coverage'   => $curCoverage,
-                'source'     => (string)$s->source,
+            // Matched main numbers (for UI and post-processing)
+            $matchedMain = array_values(array_intersect($predMain, $actualMain));
+
+            // Collect full scored-run data into all_scored_runs (Task A)
+            $bestOpps[$lid]['all_scored_runs'][] = [
+                'run_id'       => (int)$s->id,
+                'draw_date'    => (string)$g['draw_date'],
+                'source'       => (string)$s->source,
+                'hits'         => $mainHitCount,
+                'extra_hits'   => (int)$extraHitCount,
+                'rank_score'   => $rankScore,
+                'coverage'     => $curCoverage,
+                'pred_main'    => $predMain,
+                'pred_extra'   => $predExtra,
+                'matched_main' => $matchedMain,
+                'actual_main'  => $actualMain,
+                'actual_extra' => $actualExtra,
+                'has_draw'     => true,
             ];
 
             $prev = $bestOpps[$lid]['best_rank'];
@@ -1949,40 +1955,72 @@ if ($drawRow) {
 }
 }
 
-// ── Admin diagnostic: top-10 ranked runs per lottery (Task D) ──
-// Only rendered for users with core.admin access so normal users never see it.
-if (!empty($__diagRuns) && $user->authorise('core.admin')) {
-    echo '<!-- SKAI-DIAG-RANK-START -->';
-    foreach ($__diagRuns as $__diagLid => $__diagList) {
-        // Sort by the shared ranking rule used for best_rank selection
-        usort($__diagList, $__rankCompare);
-        $__diagTop = array_slice($__diagList, 0, 10);
-        $__diagLotName = isset($bestOpps[$__diagLid]) ? htmlspecialchars($bestOpps[$__diagLid]['lottery_name'], ENT_QUOTES) : (string)$__diagLid;
-        echo '<details style="margin:0.5rem 0; border:1px solid #e2e8f0; border-radius:4px;">';
-        echo '<summary style="padding:0.4rem 0.7rem; font-size:0.8rem; font-weight:600; cursor:pointer; background:#f8fafc;">&#128200; DIAG: Top 10 runs – ' . $__diagLotName . '</summary>';
-        echo '<div style="overflow-x:auto; padding:0.5rem;">';
-        echo '<table style="width:100%; border-collapse:collapse; font-size:0.75rem;">';
-        echo '<thead><tr style="background:#f1f5f9;">';
-        foreach (['Rank','run_id','draw_date','hits','extra_hits','rank_score','coverage','source'] as $__dh) {
-            echo '<th style="padding:4px 8px; text-align:left; border-bottom:1px solid #cbd5e1;">' . htmlspecialchars($__dh, ENT_QUOTES) . '</th>';
+// ── Post-processing: sort all_scored_runs and promote the #1 run to best_rank ──
+// This two-pass approach guarantees hits/extra_hits take strict precedence,
+// regardless of run insertion order or rank_score arithmetic.
+foreach ($bestOpps as $lid => &$oppRef) {
+    if (!empty($oppRef['all_scored_runs'])) {
+        usort($oppRef['all_scored_runs'], $__rankCompare);
+        $oppWinner = $oppRef['all_scored_runs'][0];
+        if (!empty($oppWinner) && !empty($oppWinner['has_draw'])) {
+            $oppRef['best_rank'] = [
+                'score'        => (int)$oppWinner['rank_score'],
+                'draw_date'    => (string)$oppWinner['draw_date'],
+                'run_id'       => (int)$oppWinner['run_id'],
+                'source'       => (string)$oppWinner['source'],
+                'hits'         => (int)$oppWinner['hits'],
+                'extra_hits'   => (int)$oppWinner['extra_hits'],
+                'numbers'      => (array)$oppWinner['pred_main'],
+                'extra_number' => (int)$oppWinner['pred_extra'],
+                'has_draw'     => true,
+                'coverage'     => (int)$oppWinner['coverage'],
+            ];
         }
-        echo '</tr></thead><tbody>';
-        foreach ($__diagTop as $__di => $__dr) {
-            $__dRowStyle = ($__di === 0) ? ' style="background:#ecfdf5; font-weight:600;"' : '';
-            echo '<tr' . $__dRowStyle . '>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . ($__di + 1) . '</td>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['run_id']     . '</td>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . htmlspecialchars((string)$__dr['draw_date'],   ENT_QUOTES) . '</td>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['hits']       . '</td>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['extra_hits'] . '</td>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['rank_score'] . '</td>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['coverage']   . '</td>';
-            echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . htmlspecialchars((string)$__dr['source'],    ENT_QUOTES) . '</td>';
-            echo '</tr>';
-        }
-        echo '</tbody></table></div></details>';
     }
-    echo '<!-- SKAI-DIAG-RANK-END -->';
+}
+unset($oppRef);
+
+// ── Admin diagnostic: top-5 ranked runs per lottery ──
+// Only rendered for users with core.admin access so normal users never see it.
+if ($user->authorise('core.admin')) {
+    $__hasDiagData = false;
+    foreach ($bestOpps as $__dl) {
+        if (!empty($__dl['all_scored_runs'])) { $__hasDiagData = true; break; }
+    }
+    if ($__hasDiagData) {
+        echo '<!-- SKAI-DIAG-RANK-START -->';
+        foreach ($bestOpps as $__diagLid => $__diagOpp) {
+            $__diagList = $__diagOpp['all_scored_runs'] ?? [];
+            if (empty($__diagList)) continue;
+            // all_scored_runs is already sorted by post-processing above
+            $__diagTop     = array_slice($__diagList, 0, 5);
+            $__diagLotName = htmlspecialchars($__diagOpp['lottery_name'] ?? (string)$__diagLid, ENT_QUOTES);
+            echo '<details style="margin:0.5rem 0; border:1px solid #e2e8f0; border-radius:4px;">';
+            echo '<summary style="padding:0.4rem 0.7rem; font-size:0.8rem; font-weight:600; cursor:pointer; background:#f8fafc;">&#128200; DIAG: Top 5 runs – ' . $__diagLotName . '</summary>';
+            echo '<div style="overflow-x:auto; padding:0.5rem;">';
+            echo '<table style="width:100%; border-collapse:collapse; font-size:0.75rem;">';
+            echo '<thead><tr style="background:#f1f5f9;">';
+            foreach (['Rank','run_id','draw_date','hits','extra_hits','rank_score','coverage','source'] as $__dh) {
+                echo '<th style="padding:4px 8px; text-align:left; border-bottom:1px solid #cbd5e1;">' . htmlspecialchars($__dh, ENT_QUOTES) . '</th>';
+            }
+            echo '</tr></thead><tbody>';
+            foreach ($__diagTop as $__di => $__dr) {
+                $__dRowStyle = ($__di === 0) ? ' style="background:#ecfdf5; font-weight:600;"' : '';
+                echo '<tr' . $__dRowStyle . '>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . ($__di + 1) . '</td>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['run_id']     . '</td>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . htmlspecialchars((string)$__dr['draw_date'],   ENT_QUOTES) . '</td>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['hits']       . '</td>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['extra_hits'] . '</td>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['rank_score'] . '</td>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . (int)$__dr['coverage']   . '</td>';
+                echo '<td style="padding:3px 8px; border-bottom:1px solid #e2e8f0;">' . htmlspecialchars((string)$__dr['source'],    ENT_QUOTES) . '</td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table></div></details>';
+        }
+        echo '<!-- SKAI-DIAG-RANK-END -->';
+    }
 }
 // Method display labels (short) for Best Opportunities display
 $__methodLabels = [
