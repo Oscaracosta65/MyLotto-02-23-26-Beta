@@ -2989,10 +2989,10 @@ h3.title { font-size: 1.5rem; }
     [[/div]]<!-- end hidden Agreement -->
 
     <?php
-    // ── Coverage card (hidden - not deleted) ──
+    // ── Coverage card ──
     $bc = $opp['best_coverage'];
     ?>
-    [[div style="display:none;"]]
+    [[div]]
     [[div style="border-top:1px solid #f1f5f9; padding-top:0.6rem; margin-top:0.6rem;"]]
       [[span class="skai-opp-card__badge skai-opp-card__badge--cover"]]Best Coverage[[/span]]
       [[div class="skai-opp-card__def"]]How many unique numbers this one run gives you.[[/div]]
@@ -3013,8 +3013,8 @@ h3.title { font-size: 1.5rem; }
           [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
                    data-use-settings="1"
                    data-lottery-id="<?php echo $lid; ?>"
-                   data-run-id="<?php echo (int)$br['run_id']; ?>"
-                   data-group-key="<?php echo htmlspecialchars($lid . '-' . date('Y-m-d', strtotime($br['draw_date'])), ENT_QUOTES); ?>"
+                   data-run-id="<?php echo (int)$bc['run_id']; ?>"
+                   data-group-key="<?php echo htmlspecialchars($lid . '-' . date('Y-m-d', strtotime($bc['draw_date'])), ENT_QUOTES); ?>"
                    aria-label="Scroll to this lottery section"]]
             Use these settings
           [[/button]]
@@ -3040,7 +3040,7 @@ h3.title { font-size: 1.5rem; }
         [[div class="skai-opp-card__metric"]]No runs yet[[/div]]
       <?php endif; ?>
     [[/div]]
-    [[/div]]<!-- end hidden Coverage -->
+    [[/div]]<!-- end Coverage -->
 
     <?php
     // ── Rank Strength card ──
@@ -3067,8 +3067,8 @@ h3.title { font-size: 1.5rem; }
           [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
                    data-use-settings="1"
                    data-lottery-id="<?php echo $lid; ?>"
-                   data-run-id="<?php echo (int)$bc['run_id']; ?>"
-                   data-group-key="<?php echo htmlspecialchars($lid . '-' . date('Y-m-d', strtotime($bc['draw_date'])), ENT_QUOTES); ?>"
+                   data-run-id="<?php echo (int)$br['run_id']; ?>"
+                   data-group-key="<?php echo htmlspecialchars($lid . '-' . date('Y-m-d', strtotime($br['draw_date'])), ENT_QUOTES); ?>"
                    aria-label="Scroll to this lottery section"]]
             Use these settings
           [[/button]]
