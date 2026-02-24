@@ -3067,8 +3067,8 @@ h3.title { font-size: 1.5rem; }
           [[button type="button" class="skai-opp-card__cta skai-opp-card__cta--primary"
                    data-use-settings="1"
                    data-lottery-id="<?php echo $lid; ?>"
-                   data-run-id="<?php echo (int)$bc['run_id']; ?>"
-                   data-group-key="<?php echo htmlspecialchars($lid . '-' . date('Y-m-d', strtotime($bc['draw_date'])), ENT_QUOTES); ?>"
+                   data-run-id="<?php echo (int)$br['run_id']; ?>"
+                   data-group-key="<?php echo htmlspecialchars($lid . '-' . date('Y-m-d', strtotime($br['draw_date'])), ENT_QUOTES); ?>"
                    aria-label="Scroll to this lottery section"]]
             Use these settings
           [[/button]]
